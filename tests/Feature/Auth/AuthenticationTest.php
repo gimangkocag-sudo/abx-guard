@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,6 +16,16 @@ class AuthenticationTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertStatus(200);
+    }
+
+    public function test_guest_redirect_uses_https_when_the_application_url_is_https(): void
+    {
+        config(['app.url' => 'https://abx-guard-production.up.railway.app']);
+        (new AppServiceProvider($this->app))->boot();
+
+        $response = $this->get('/dashboard');
+
+        $response->assertRedirect('https://localhost/login');
     }
 
     public function test_users_can_authenticate_using_the_login_screen(): void
