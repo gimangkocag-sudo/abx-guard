@@ -35,11 +35,18 @@ class AdminSeeder extends Seeder
             }
         }
 
+        if (User::where('role', 'admin')->exists()) {
+            return;
+        }
+
         $user = User::firstOrNew(['email' => $email ?: self::DEV_EMAIL]);
-        $user->name = 'Admin ABX Guard';
-        $user->password = Hash::make($password ?: self::DEV_PASSWORD);
-        $user->email_verified_at = now();
-        $user->role = 'admin'; // role tidak mass-assignable; diset eksplisit
+        if (! $user->exists) {
+            $user->name = 'Admin ABX Guard';
+            $user->password = Hash::make($password ?: self::DEV_PASSWORD);
+            $user->email_verified_at = now();
+        }
+
+        $user->role = 'admin';
         $user->save();
     }
 }

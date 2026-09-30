@@ -118,6 +118,18 @@ class AdminPhase3Test extends TestCase
             ->assertInertia(fn (Assert $p) => $p->where('stats.total', 1)->where('stats.survey.version', 2));
     }
 
+    public function test_admin_seeder_does_not_overwrite_existing_admin_password(): void
+    {
+        config(['abx.admin.email' => 'existing-admin@example.test', 'abx.admin.password' => 'New-Configured-Pass!']);
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $storedPassword = $admin->password;
+        $adminCount = User::where('role', 'admin')->count();
+
+        (new AdminSeeder)->run();
+
+        $this->assertSame($storedPassword, $admin->fresh()->password);
+        $this->assertSame($adminCount, User::where('role', 'admin')->count());
+    }
     public function test_admin_seeder_requires_env_credentials_outside_dev(): void
     {
         $this->app->detectEnvironment(fn () => 'production');
