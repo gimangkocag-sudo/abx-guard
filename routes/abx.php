@@ -20,6 +20,7 @@ Route::get('/belajar/{module}', [LearnController::class, 'show'])->name('learn.s
 
 // Butuh login
 Route::middleware('auth')->group(function () {
+    Route::redirect('/survey', '/kap-survey')->name('survey.redirect');
     Route::get('/kap-survey', [SurveyController::class, 'show'])->name('kap.show');
     Route::post('/kap-survey', [SurveyController::class, 'store'])->middleware('throttle:10,1')->name('kap.store');
 
