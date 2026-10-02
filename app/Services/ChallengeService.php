@@ -59,7 +59,7 @@ class ChallengeService
     {
         $done = ChallengeAttempt::where('user_id', $user->id)->whereNotNull('completed_at');
         $best = (clone $done)->orderByDesc('score')->orderByDesc('completed_at')->first();
-        $last = (clone $done)->latest('completed_at')->first();
+        $last = (clone $done)->orderByDesc('completed_at')->orderByDesc('id')->first();
 
         return [
             'best' => $best ? ['score' => $best->score, 'total' => $best->total] : null,
