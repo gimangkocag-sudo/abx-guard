@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import axios from 'axios';
+import { useRef, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AbxLayout from '@/Layouts/AbxLayout';
 import PageContainer from '@/Components/Abx/PageContainer';
@@ -13,16 +12,22 @@ export default function Challenge({ questions, summary }) {
     const [playing, setPlaying] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [error, setError] = useState(null);
-
-    // Umpan balik per pertanyaan datang dari server; skor akhir juga dihitung server saat submit.
-    const check = async (q, answer) => (await axios.post('/amr-challenge/periksa', { question_id: q.id, answer })).data;
+    const [errorStatus, setErrorStatus] = useState(null);
+    const finishingRef = useRef(false);
 
     const finish = (answers) => {
+        if (finishingRef.current) return;
+        finishingRef.current = true;
         setFinishing(true);
         setError(null);
         router.post('/amr-challenge', { answers }, {
             onError: (e) => setError(Object.values(e)[0] || 'Hasil belum dapat disimpan. Coba lagi.'),
-            onFinish: () => setFinishing(false),
+            onHttpException: (response) => {
+                setErrorStatus(response.status);
+                setError(response.status === 401 || response.status === 419 ? 'Sesi berakhir. Masuk kembali untuk menyimpan hasil.' : response.status === 429 ? 'Terlalu banyak percobaan. Tunggu sebentar sebelum mencoba lagi.' : response.status >= 500 ? 'Server belum dapat menyimpan hasil. Coba lagi nanti.' : 'Hasil belum dapat disimpan. Coba lagi.');
+            },
+            onNetworkError: () => { setErrorStatus('network'); setError('Koneksi terputus. Periksa koneksi lalu coba lagi.'); },
+            onFinish: () => { finishingRef.current = false; setFinishing(false); },
         });
     };
 
@@ -45,15 +50,15 @@ export default function Challenge({ questions, summary }) {
                                 ) : (
                                     <p className="mt-2 text-sm text-gray-600">Kamu belum pernah mencoba challenge ini.</p>
                                 )}
-                                <Button className="mt-6" onClick={() => setPlaying(true)}>{summary.attempts > 0 ? 'Coba Lagi' : 'Start Challenge'}</Button>
+                                <Button className="mt-6" onClick={() => { setErrorStatus(null); setPlaying(true); }}>{summary.attempts > 0 ? 'Coba Lagi' : 'Mulai Challenge'}</Button>
                                 {summary.lastAttemptId && <p className="mt-4"><Button href={`/amr-challenge/hasil/${summary.lastAttemptId}`} variant="ghost">Lihat hasil terakhir</Button></p>}
                             </>
                         )}
                     </Card>
                 ) : (
                     <>
-                        <QuizPlayer questions={questions} check={check} onFinish={finish} finishing={finishing} />
-                        {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-rose-900">{error}</p>}
+                        <QuizPlayer questions={questions} onFinish={finish} finishing={finishing} deferFeedback />
+                        {error && <p role="alert" data-error-status={errorStatus} className="mt-4 rounded-xl bg-rose-50 p-3 text-rose-950">{error}</p>}
                     </>
                 )}
                 <Disclaimer className="mt-10" />

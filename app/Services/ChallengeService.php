@@ -18,18 +18,6 @@ class ChallengeService
         return ChallengeQuestion::orderBy('sort')->get(['id', 'statement'])->toArray();
     }
 
-    /** Umpan balik per pertanyaan. Kebenaran selalu ditentukan server dari correct_answer. */
-    public function check(int $questionId, string $answer): array
-    {
-        $q = ChallengeQuestion::findOrFail($questionId);
-
-        return [
-            'correct' => $q->correct_answer === $answer,
-            'correct_answer' => $q->correct_answer,
-            'explanation' => $q->explanation,
-        ];
-    }
-
     /** Semua pertanyaan wajib dijawab; nilai hanya mitos/fakta. Skor dari klien tidak pernah dibaca. */
     public function rules(): array
     {

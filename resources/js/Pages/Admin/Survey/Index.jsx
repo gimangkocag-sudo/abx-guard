@@ -17,7 +17,7 @@ export default function SurveyIndex({ rows, pagination, filters, surveys, export
         <AdminLayout title="KAP Survey — Responses">
             <Head title="Admin — KAP Responses" />
             <FilterBar action="/admin/survey" values={filters} fields={fields}>
-                <a href={exportHref} className="ml-auto inline-flex min-h-10 items-center rounded-lg border border-teal-600 px-4 text-sm font-semibold text-teal-700 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">⬇ Export CSV (v{exportSurvey.version})</a>
+                <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV (v{exportSurvey.version})</a>
             </FilterBar>
             <p className="-mt-2 mb-4 text-xs text-slate-600">Export selalu untuk satu versi survey dan mengikuti filter di atas. Jika “Semua versi” dipilih, export memakai versi default (v{exportSurvey.version}).</p>
             {rows.length === 0 ? <EmptyState title="Tidak ada submission yang cocok">Ubah filter atau rentang tanggal.</EmptyState> : (

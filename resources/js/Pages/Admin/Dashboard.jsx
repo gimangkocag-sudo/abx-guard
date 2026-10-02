@@ -11,12 +11,12 @@ export default function Dashboard({ stats, activeSurvey, versions, submissionsPe
         <AdminLayout title="Dashboard">
             <Head title="Admin Dashboard" />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <StatCard label="Total Users" value={stats.users} />
-                <StatCard label="Total KAP Submissions" value={stats.submissions} hint="Semua versi survey; rincian per versi di bawah" />
-                <StatCard label="Completion Rate" value={`${stats.completion}%`} hint={`${stats.activeSubmissions} user sudah mengisi v${activeSurvey.version} dari ${stats.users} user`} />
-                <StatCard label="AMR Challenge Attempts" value={stats.challengeAttempts} />
-                <StatCard label="Active Survey Version" value={`v${activeSurvey.version}`} hint={activeSurvey.title} />
-                <StatCard label="Submission versi aktif" value={stats.activeSubmissions} hint={`survey_id ${activeSurvey.id}`} />
+                <StatCard label="Total pengguna" value={stats.users} />
+                <StatCard label="Total submission KAP" value={stats.submissions} hint="Semua versi survey; rincian per versi di bawah" />
+                <StatCard label="Tingkat penyelesaian" value={`${stats.completion}%`} hint={activeSurvey ? `${stats.activeSubmissions} pengguna telah mengisi v${activeSurvey.version} dari ${stats.users} pengguna` : 'Belum ada survey aktif'} />
+                <StatCard label="Percobaan AMR Challenge" value={stats.challengeAttempts} />
+                <StatCard label="Versi survey aktif" value={activeSurvey ? `v${activeSurvey.version}` : 'Belum tersedia'} hint={activeSurvey?.title ?? 'Belum ada survey aktif'} />
+                <StatCard label="Submission versi aktif" value={stats.activeSubmissions} hint={activeSurvey ? `survey_id ${activeSurvey.id}` : 'Belum ada survey aktif'} />
             </div>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -37,6 +37,7 @@ export default function Dashboard({ stats, activeSurvey, versions, submissionsPe
             <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="v">
                 <h2 id="v" className="font-bold">Submission per versi survey</h2>
                 <ul className="mt-3 divide-y divide-slate-100 text-sm">
+                    {versions.length === 0 && <li className="py-3 text-sm text-slate-600">Belum ada survey yang tersedia.</li>}
                     {versions.map((v) => (
                         <li key={v.id} className="flex items-center justify-between py-2">
                             <span>v{v.version} <span className="text-slate-500">(survey_id {v.id}) {v.isActive ? '· aktif' : '· nonaktif'}</span></span>

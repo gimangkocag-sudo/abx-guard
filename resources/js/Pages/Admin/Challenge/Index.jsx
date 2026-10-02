@@ -18,9 +18,9 @@ export default function ChallengeIndex({ summary, attempts, pagination, filters 
             </div>
             <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="dist">
                 <h2 id="dist" className="font-bold">Distribusi skor</h2>
-                <div className="mt-4">{summary.completed > 0 ? <BarChart data={summary.distribution} label="Jumlah attempt per skor" /> : <EmptyState title="Belum ada attempt selesai" />}</div>
+                <div className="mt-4">{summary.completed > 0 ? <BarChart data={summary.distribution} label="Jumlah percobaan per skor" /> : <EmptyState title="Belum ada percobaan selesai" />}</div>
             </section>
-            <h2 className="mb-2 mt-8 font-bold">Attempt terbaru</h2>
+            <h2 className="mb-2 mt-8 font-bold">Percobaan terbaru</h2>
             <FilterBar action="/admin/challenge" values={filters} fields={[{ name: 'q', label: 'Cari nama atau email', type: 'text' }]} />
             {attempts.length === 0 ? <EmptyState title="Tidak ada attempt yang cocok" /> : (
                 <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">

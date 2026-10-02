@@ -29,7 +29,7 @@ export default function Statistics({ stats, surveys, filters }) {
         <AdminLayout title="Statistik KAP">
             <Head title="Admin — Statistik KAP" />
             <FilterBar action="/admin/statistics" values={{ survey: filters.survey, from: filters.from, to: filters.to }} fields={fields}>
-                <a href={exportHref} className="ml-auto inline-flex min-h-10 items-center rounded-lg border border-teal-600 px-4 text-sm font-semibold text-teal-700 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">⬇ Export CSV sesuai filter</a>
+                <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV sesuai filter</a>
             </FilterBar>
 
             <div className="mb-6 rounded-xl border-l-4 border-teal-500 bg-white p-4 text-sm shadow-sm">

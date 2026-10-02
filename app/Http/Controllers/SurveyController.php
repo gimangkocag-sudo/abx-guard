@@ -14,7 +14,10 @@ class SurveyController extends Controller
 
     public function show(Request $request): Response
     {
-        $survey = $this->surveys->activeSurvey();
+        $survey = $this->surveys->activeSurveyOrNull();
+        if (! $survey) {
+            return Inertia::render('Abx/Survey', ['survey' => null, 'submittedAt' => null]);
+        }
         $submission = $this->surveys->submissionFor($request->user(), $survey);
 
         return Inertia::render('Abx/Survey', [

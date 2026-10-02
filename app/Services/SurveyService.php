@@ -19,11 +19,16 @@ class SurveyService
      */
     public function activeSurvey(): Survey
     {
+        return $this->activeSurveyOrNull() ?? throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)->setModel(Survey::class);
+    }
+
+    public function activeSurveyOrNull(): ?Survey
+    {
         return Survey::where('slug', config('abx.survey_slug'))
             ->where('is_active', true)
             ->orderByDesc('version')
             ->with('sections.questions')
-            ->firstOrFail();
+            ->first();
     }
 
     /** Survey default untuk laporan admin: versi aktif tertinggi; jika tidak ada yang aktif, versi terbaru. */
@@ -31,6 +36,12 @@ class SurveyService
     {
         return Survey::where('slug', config('abx.survey_slug'))->where('is_active', true)->orderByDesc('version')->first()
             ?? Survey::orderByDesc('version')->firstOrFail();
+    }
+
+    public function reportingSurveyOrNull(): ?Survey
+    {
+        return $this->activeSurveyOrNull()
+            ?? Survey::where('slug', config('abx.survey_slug'))->orderByDesc('version')->first();
     }
 
     public function submissionFor(User $user, Survey $survey): ?SurveySubmission

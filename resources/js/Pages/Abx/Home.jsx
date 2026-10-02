@@ -29,7 +29,7 @@ export default function Home() {
                 <section className="grid items-center gap-10 lg:grid-cols-2">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-widest text-teal-700">ABX GUARD</p>
-                        <h1 className="mt-3 text-4xl font-extrabold leading-tight text-teal-950 sm:text-5xl">
+                        <h1 className="mt-3 break-words text-3xl font-extrabold leading-tight text-teal-950 sm:text-5xl">
                             THINK BEFORE ANTIBIOTICS.<br />PROTECT YOUR MICROBIOME.
                         </h1>
                         <p className="mt-4 text-xl font-medium text-teal-800">Kenali Keluhanmu. Pahami Antibiotikmu. Jaga Mikrobiomamu.</p>

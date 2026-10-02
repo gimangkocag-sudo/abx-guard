@@ -38,8 +38,10 @@ class ChallengeController extends Controller
     }
 
     /** Admin boleh melihat detail attempt siapa pun (dijaga middleware admin). Rute user tetap hanya untuk pemilik. */
-    public function show(ChallengeAttempt $attempt, ChallengeService $challenge): Response
+    public function show(string $attemptId, ChallengeService $challenge): Response
     {
+        // Resolve record after admin middleware so unauthorized users cannot probe IDs.
+        $attempt = ChallengeAttempt::findOrFail($attemptId);
         $attempt->load('user:id,name,email');
 
         return Inertia::render('Admin/Challenge/Show', $challenge->result($attempt) + [

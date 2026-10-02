@@ -37,7 +37,7 @@ function Steps() {
                         <li key={s}>
                             <button type="button" aria-pressed={on} onClick={() => toggle(i)}
                                 className={`flex min-h-16 w-full items-center gap-4 rounded-2xl border-2 p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${on ? 'border-teal-600 bg-teal-50' : 'border-gray-200 bg-white hover:border-teal-300'}`}>
-                                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-teal-600 font-bold text-white">{on ? '✓' : i + 1}</span>
+                                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-teal-700 font-bold text-white">{on ? '✓' : i + 1}</span>
                                 <span className="flex-1 font-medium text-gray-900">{s}</span>
                                 <span className="text-xs font-semibold text-teal-800">{on ? 'Sudah paham' : 'Ketuk jika paham'}</span>
                             </button>

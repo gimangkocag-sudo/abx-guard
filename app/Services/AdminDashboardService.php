@@ -10,13 +10,16 @@ use Illuminate\Support\Facades\DB;
 
 class AdminDashboardService
 {
-    public function dashboard(Survey $active): array
+    public function dashboard(?Survey $active): array
     {
-        $users = User::count();
-        $activeSubmissions = SurveySubmission::where('survey_id', $active->id)->count();
+        $users = User::where('role', 'user')->count();
+        $activeSubmissions = $active
+            ? SurveySubmission::where('survey_id', $active->id)->whereHas('user', fn ($query) => $query->where('role', 'user'))->count()
+            : 0;
 
-        // Jumlah submission dan completion dihitung per survey_id; completion = user yang sudah mengisi versi aktif / seluruh user.
+        // Completion hanya membandingkan submission versi aktif dengan akun responden non-admin.
         $perDay = SurveySubmission::query()
+            ->whereHas('user', fn ($query) => $query->where('role', 'user'))
             ->where('submitted_at', '>=', now()->subDays(13)->startOfDay())
             ->groupBy(DB::raw('DATE(submitted_at)'))
             ->selectRaw('DATE(submitted_at) as d, COUNT(*) as n')
@@ -35,7 +38,7 @@ class AdminDashboardService
                 'completion' => $users > 0 ? round($activeSubmissions / $users * 100, 1) : 0,
                 'challengeAttempts' => ChallengeAttempt::whereNotNull('completed_at')->count(),
             ],
-            'activeSurvey' => ['id' => $active->id, 'version' => $active->version, 'title' => $active->title],
+            'activeSurvey' => $active ? ['id' => $active->id, 'version' => $active->version, 'title' => $active->title] : null,
             'versions' => Survey::withCount('submissions')->orderByDesc('version')->get()
                 ->map(fn ($s) => ['id' => $s->id, 'version' => $s->version, 'isActive' => $s->is_active, 'submissions' => $s->submissions_count])->all(),
             'submissionsPerDay' => $series,

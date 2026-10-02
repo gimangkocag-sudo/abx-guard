@@ -18,10 +18,12 @@ class DashboardController extends Controller
         LearningProgressService $progress,
     ): Response {
         $user = $request->user();
-        $submission = $surveys->submissionFor($user, $surveys->activeSurvey());
+        $survey = $surveys->activeSurveyOrNull();
+        $submission = $survey ? $surveys->submissionFor($user, $survey) : null;
 
         return Inertia::render('Dashboard', [
             'surveyDone' => (bool) $submission,
+            'surveyAvailable' => $survey !== null,
             'surveySubmittedAt' => $submission?->submitted_at?->toIso8601String(),
             'challenge' => $challenge->summaryFor($user),
             'progress' => $progress->summary($user),

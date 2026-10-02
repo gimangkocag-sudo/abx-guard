@@ -37,7 +37,8 @@ export default function SymptomCheck() {
                     </div>
                 </fieldset>
 
-                <div className="mt-8" aria-live="polite">
+                <p className="sr-only" role="status" aria-live="polite">{selected.length} keluhan dipilih. Materi edukasi diperbarui.</p>
+                <div className="mt-8">
                     {selected.length === 0 ? (
                         <p className="rounded-2xl border border-dashed border-teal-200 bg-white p-8 text-center text-gray-600">
                             Pilih satu atau lebih keluhan untuk melihat materi edukasi yang relevan.

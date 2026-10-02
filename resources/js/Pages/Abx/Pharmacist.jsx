@@ -39,13 +39,13 @@ export default function Pharmacist() {
                         <div role="group" aria-label="Contoh pertanyaan" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                             {PHARMACIST.examples.map((e, i) => (
                                 <button key={e.q} type="button" aria-pressed={active === i} onClick={() => setActive(i)}
-                                    className={`min-h-12 rounded-full border px-4 py-2 text-left text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 ${active === i ? 'border-teal-600 bg-teal-600 text-white' : 'border-teal-200 bg-white text-teal-900 hover:bg-teal-50'}`}>
+                                    className={`min-h-12 rounded-full border px-4 py-2 text-left text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${active === i ? 'border-teal-700 bg-teal-700 text-white' : 'border-teal-200 bg-white text-teal-900 hover:bg-teal-50'}`}>
                                     {e.q}
                                 </button>
                             ))}
                         </div>
                         <FadeIn key={active} className="mt-5 space-y-3" >
-                            <div className="ml-auto max-w-lg rounded-2xl rounded-br-sm bg-teal-600 p-4 text-white"><span className="block text-xs font-semibold uppercase opacity-80">Pengguna</span>{ex.q}</div>
+                            <div className="ml-auto max-w-lg rounded-2xl rounded-br-sm bg-teal-700 p-4 text-white"><span className="block text-xs font-semibold uppercase opacity-90">Pengguna</span>{ex.q}</div>
                             <div className="max-w-lg rounded-2xl rounded-bl-sm bg-teal-50 p-4 text-teal-950"><span className="block text-xs font-semibold uppercase text-teal-700">Apoteker</span>{ex.a}</div>
                         </FadeIn>
                         <div className="mt-6 flex items-center gap-2 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-2">
@@ -53,7 +53,7 @@ export default function Pharmacist() {
                             <input id="ask" disabled placeholder="Konsultasi langsung dengan apoteker belum tersedia" className="min-h-12 flex-1 cursor-not-allowed rounded-xl border-0 bg-transparent px-3 text-gray-500" />
                             <button type="button" disabled className="min-h-12 rounded-xl bg-gray-300 px-5 font-semibold text-white">Kirim</button>
                         </div>
-                        <p className="mt-2 text-xs text-gray-600">Fitur tanya jawab langsung dengan apoteker akan dikembangkan pada tahap berikutnya. Halaman ini hanya berisi contoh edukasi, bukan diagnosis otomatis.</p>
+                        <p className="mt-2 text-xs text-gray-700">Fitur tanya jawab langsung dengan apoteker belum tersedia. Halaman ini hanya berisi contoh edukasi dan bukan diagnosis otomatis.</p>
                     </div>
                 </section>
 

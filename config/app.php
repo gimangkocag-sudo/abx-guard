@@ -65,6 +65,7 @@ return [
     |
     */
 
+    // Statistik, filter tanggal, dan timestamp frontend ditampilkan dalam UTC.
     'timezone' => 'UTC',
 
     /*

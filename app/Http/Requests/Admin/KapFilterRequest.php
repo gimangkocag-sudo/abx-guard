@@ -30,8 +30,8 @@ class KapFilterRequest extends FormRequest
 
         return [
             'survey_id' => isset($v['survey']) ? (int) $v['survey'] : null,
-            'from' => ! empty($v['from']) ? Carbon::parse($v['from'])->startOfDay() : null,
-            'to' => ! empty($v['to']) ? Carbon::parse($v['to'])->endOfDay() : null,
+            'from' => ! empty($v['from']) ? Carbon::parse($v['from'], config('app.timezone'))->startOfDay() : null,
+            'to' => ! empty($v['to']) ? Carbon::parse($v['to'], config('app.timezone'))->endOfDay() : null,
             'q' => isset($v['q']) && $v['q'] !== '' ? $v['q'] : null,
         ];
     }

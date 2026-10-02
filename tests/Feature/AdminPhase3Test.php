@@ -68,6 +68,12 @@ class AdminPhase3Test extends TestCase
             $this->actingAs($user)->get($url)->assertForbidden();
             $this->app['auth']->logout();
         }
+        $this->actingAs($user)->get('/admin/survey/999999')->assertForbidden();
+        $this->app['auth']->logout();
+        $this->get('/admin/survey/999999')->assertRedirect('/login');
+        $this->actingAs($user)->get('/admin/challenge/999999')->assertForbidden();
+        $this->app['auth']->logout();
+        $this->get('/admin/challenge/999999')->assertRedirect('/login');
         $admin = $this->admin();
         foreach ($urls as $url) {
             $this->actingAs($admin)->get($url)->assertOk();
@@ -79,7 +85,8 @@ class AdminPhase3Test extends TestCase
         [$a, $b] = [User::factory()->create(), User::factory()->create()];
         $attempt = ChallengeAttempt::create(['user_id' => $a->id, 'score' => 5, 'total' => 5, 'completed_at' => now()]);
 
-        $this->actingAs($b)->get("/amr-challenge/hasil/{$attempt->id}")->assertForbidden();
+        $this->actingAs($b)->get("/amr-challenge/hasil/{$attempt->id}")->assertNotFound();
+        $this->actingAs($b)->get('/amr-challenge/hasil/999999')->assertNotFound();
         $this->actingAs($a)->get("/amr-challenge/hasil/{$attempt->id}")->assertOk();
     }
 

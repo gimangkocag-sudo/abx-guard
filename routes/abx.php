@@ -24,7 +24,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/kap-survey', [SurveyController::class, 'store'])->middleware('throttle:10,1')->name('kap.store');
 
     Route::get('/amr-challenge', [ChallengeController::class, 'show'])->name('challenge.show');
-    Route::post('/amr-challenge/periksa', [ChallengeController::class, 'check'])->middleware('throttle:60,1')->name('challenge.check');
     Route::post('/amr-challenge', [ChallengeController::class, 'submit'])->middleware('throttle:10,1')->name('challenge.submit');
     Route::get('/amr-challenge/hasil/{attempt}', [ChallengeController::class, 'result'])->name('challenge.result');
 });

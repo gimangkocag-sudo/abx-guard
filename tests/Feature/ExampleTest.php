@@ -16,4 +16,13 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_not_found_page_uses_abx_guard_error_screen(): void
+    {
+        $this->get('/halaman-yang-tidak-ada')
+            ->assertNotFound()
+            ->assertInertia(fn ($page) => $page
+                ->component('Errors/Status')
+                ->where('status', 404));
+    }
 }

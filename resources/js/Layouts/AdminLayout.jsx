@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 
 const NAV = [
@@ -13,7 +13,20 @@ export default function AdminLayout({ title, actions, children }) {
     const { url, props } = usePage();
     const path = url.split('?')[0];
     const [open, setOpen] = useState(false);
+    const menuButton = useRef(null);
     const active = (href) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(`${href}/`));
+
+    useEffect(() => {
+        if (!open) return undefined;
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setOpen(false);
+                menuButton.current?.focus();
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [open]);
 
     const links = (
         <ul className="space-y-1">
@@ -41,7 +54,7 @@ export default function AdminLayout({ title, actions, children }) {
                 <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                         <div className="flex items-center gap-3">
-                            <button type="button" className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 lg:hidden"
+                            <button ref={menuButton} type="button" className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 text-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 lg:hidden"
                                 aria-label={open ? 'Tutup menu admin' : 'Buka menu admin'} aria-expanded={open} aria-controls="admin-mobile-nav" onClick={() => setOpen(!open)}>
                                 <span aria-hidden="true">{open ? '✕' : '☰'}</span>
                             </button>
@@ -53,7 +66,7 @@ export default function AdminLayout({ title, actions, children }) {
                             <Link href="/logout" method="post" as="button" className="rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-slate-100">Logout</Link>
                         </div>
                     </div>
-                    {open && <nav id="admin-mobile-nav" aria-label="Navigasi admin (mobile)" className="border-t border-slate-200 bg-slate-900 p-3 lg:hidden">{links}</nav>}
+                    {open && <nav id="admin-mobile-nav" aria-label="Navigasi admin (mobile)" className="max-h-[80dvh] overflow-y-auto border-t border-slate-200 bg-slate-900 p-3 lg:hidden">{links}</nav>}
                 </header>
                 <main id="admin-main" className="flex-1 p-4 sm:p-6">
                     {actions && <div className="mb-4 flex flex-wrap gap-2">{actions}</div>}

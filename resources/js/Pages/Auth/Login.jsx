@@ -58,9 +58,9 @@ export default function Login({ status, canResetPassword }) {
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                     <label htmlFor="remember" className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
                         <Checkbox id="remember" name="remember" checked={data.remember} onChange={(e) => setData('remember', e.target.checked)} className="text-emerald-700 focus:ring-emerald-600" />
-                        Remember me
+                        Ingat saya
                     </label>
-                    {canResetPassword && <Link href={route('password.request')} className={focusLink}>Forgot password?</Link>}
+                    {canResetPassword && <Link href={route('password.request')} className={focusLink}>Lupa password?</Link>}
                 </div>
 
                 <PrimaryButton type="submit" disabled={processing} className="mt-6 flex min-h-12 w-full justify-center rounded-lg bg-emerald-700 px-5 text-sm normal-case tracking-normal shadow-sm hover:bg-emerald-800 focus:bg-emerald-800 focus:ring-emerald-600 disabled:cursor-not-allowed disabled:opacity-60">

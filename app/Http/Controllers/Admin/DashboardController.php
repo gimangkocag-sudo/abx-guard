@@ -12,6 +12,6 @@ class DashboardController extends Controller
 {
     public function index(AdminDashboardService $dashboard, SurveyService $surveys): Response
     {
-        return Inertia::render('Admin/Dashboard', $dashboard->dashboard($surveys->reportingSurvey()));
+        return Inertia::render('Admin/Dashboard', $dashboard->dashboard($surveys->activeSurveyOrNull()));
     }
 }

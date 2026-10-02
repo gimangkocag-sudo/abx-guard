@@ -36,8 +36,10 @@ class SurveyResponseController extends Controller
         ]);
     }
 
-    public function show(SurveySubmission $submission): Response
+    public function show(string $submissionId): Response
     {
+        // Resolve record after admin middleware so valid and unknown IDs return the same response to guests/non-admins.
+        $submission = SurveySubmission::findOrFail($submissionId);
         $submission->load(['user:id,name,email', 'survey.sections.questions', 'answers']);
         $values = $submission->answers->pluck('value', 'question_id');
 
