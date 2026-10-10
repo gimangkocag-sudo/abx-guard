@@ -41,7 +41,8 @@ class SurveyService
     public function reportingSurveyOrNull(): ?Survey
     {
         return $this->activeSurveyOrNull()
-            ?? Survey::where('slug', config('abx.survey_slug'))->orderByDesc('version')->first();
+            ?? Survey::where('slug', config('abx.survey_slug'))->orderByDesc('version')->first()
+            ?? Survey::orderByDesc('version')->first();
     }
 
     public function submissionFor(User $user, Survey $survey): ?SurveySubmission

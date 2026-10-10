@@ -12,9 +12,9 @@ class KapStatisticsService
     public function __construct(private SurveyService $surveys) {}
 
     /** Survey yang dilaporkan: pilihan admin (survey_id) atau default. Statistik selalu untuk SATU survey_id. */
-    public function resolveSurvey(?int $surveyId): Survey
+    public function resolveSurvey(?int $surveyId): ?Survey
     {
-        return $surveyId ? Survey::findOrFail($surveyId) : $this->surveys->reportingSurvey();
+        return $surveyId ? Survey::findOrFail($surveyId) : $this->surveys->reportingSurveyOrNull();
     }
 
     /** Opsi dropdown versi survey (terbaru dulu). */

@@ -48,7 +48,7 @@ export default function Login({ status, canResetPassword }) {
                     <InputLabel htmlFor="password" value="Password" className="text-slate-700" />
                     <div className="relative mt-1">
                         <TextInput id="password" type={showPassword ? 'text' : 'password'} name="password" value={data.password} className={`${inputClass} pr-24`} autoComplete="current-password" onChange={(e) => setData('password', e.target.value)} required />
-                        <button type="button" onClick={() => setShowPassword((shown) => !shown)} aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} aria-pressed={showPassword} className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-sm font-medium text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+                        <button type="button" onClick={() => setShowPassword((shown) => !shown)} aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} aria-pressed={showPassword} className="absolute inset-y-0 right-2 my-auto inline-flex min-h-11 items-center justify-center rounded-md px-2 text-sm font-medium text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
                             {showPassword ? 'Sembunyikan' : 'Tampilkan'}
                         </button>
                     </div>

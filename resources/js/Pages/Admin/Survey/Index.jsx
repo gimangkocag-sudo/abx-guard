@@ -12,15 +12,15 @@ export default function SurveyIndex({ rows, pagination, filters, surveys, export
         { name: 'from', label: 'Dari tanggal', type: 'date' },
         { name: 'to', label: 'Sampai tanggal', type: 'date' },
     ];
-    const exportHref = `/admin/export/kap?${qs({ ...filters, survey: filters.survey || exportSurvey.id })}`;
+    const exportHref = exportSurvey ? `/admin/export/kap?${qs({ ...filters, survey: filters.survey || exportSurvey.id })}` : null;
     return (
         <AdminLayout title="Histori KAP Lama">
             <Head title="Admin — Histori KAP Lama" />
             <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Data historis instrumen KAP 36 item. Instrumen ini tidak lagi aktif untuk pengisian baru; gunakan menu Survei Penelitian untuk data instrumen saat ini.</p>
             <FilterBar action="/admin/survey" values={filters} fields={fields}>
-                <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV (v{exportSurvey.version})</a>
+                {exportHref && <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV (v{exportSurvey.version})</a>}
             </FilterBar>
-            <p className="-mt-2 mb-4 text-xs text-slate-600">Export selalu untuk satu versi survey dan mengikuti filter di atas. Jika “Semua versi” dipilih, export memakai versi default (v{exportSurvey.version}).</p>
+            {exportSurvey && <p className="-mt-2 mb-4 text-xs text-slate-600">Export selalu untuk satu versi survey dan mengikuti filter di atas. Jika “Semua versi” dipilih, export memakai versi default (v{exportSurvey.version}).</p>}
             {rows.length === 0 ? <EmptyState title="Tidak ada submission yang cocok">Ubah filter atau rentang tanggal.</EmptyState> : (
                 <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                     <table className="w-full text-sm">

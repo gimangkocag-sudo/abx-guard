@@ -14,8 +14,20 @@ class KapExportService
      * CSV untuk SATU survey (kolom = kode pertanyaan survey itu), mengikuti filter admin.
      * Jawaban diekspor sebagai nilai tersimpan (benar/salah/tidak_tahu atau 1–5). Tidak ada password/data sensitif.
      */
-    public function download(Survey $survey, array $filters): StreamedResponse
+    public function download(?Survey $survey, array $filters): StreamedResponse
     {
+        if (! $survey) {
+            return response()->streamDownload(function () {
+                $out = fopen('php://output', 'w');
+                fwrite($out, "\xEF\xBB\xBF");
+                $this->row($out, self::FIXED);
+                fclose($out);
+            }, 'kap-historis-kosong-'.now()->format('Ymd_His').'.csv', [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Cache-Control' => 'no-store',
+            ]);
+        }
+
         $survey->loadMissing('sections.questions');
         $questions = $survey->sections->flatMap->questions->values();
         $filters['survey_id'] = $survey->id;

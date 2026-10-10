@@ -32,7 +32,7 @@ class SurveyResponseController extends Controller
             'pagination' => Pagination::meta($page),
             'filters' => $request->raw(),
             'surveys' => $stats->surveyOptions(),
-            'exportSurvey' => ['id' => $exportSurvey->id, 'version' => $exportSurvey->version],
+            'exportSurvey' => $exportSurvey ? ['id' => $exportSurvey->id, 'version' => $exportSurvey->version] : null,
         ]);
     }
 

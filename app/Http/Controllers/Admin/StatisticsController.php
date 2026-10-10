@@ -16,10 +16,12 @@ class StatisticsController extends Controller
         $survey = $stats->resolveSurvey($filters['survey_id']);
 
         return Inertia::render('Admin/Statistics', [
-            'stats' => $stats->forSurvey($survey, $filters['from'], $filters['to']),
+            'stats' => $survey
+                ? $stats->forSurvey($survey, $filters['from'], $filters['to'])
+                : ['survey' => null, 'total' => 0, 'sections' => []],
             'surveys' => $stats->surveyOptions(),
             // select selalu terisi versi yang sedang dilaporkan; versi tidak pernah digabung.
-            'filters' => ['survey' => (string) $survey->id] + $request->raw(),
+            'filters' => ['survey' => $survey ? (string) $survey->id : ''] + $request->raw(),
         ]);
     }
 }

@@ -33,11 +33,11 @@ export default function Statistics({ stats, surveys, filters }) {
                 <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV sesuai filter</a>
             </FilterBar>
 
-            <div className="mb-6 rounded-xl border-l-4 border-teal-500 bg-white p-4 text-sm shadow-sm">
+            {stats.survey ? <div className="mb-6 rounded-xl border-l-4 border-teal-500 bg-white p-4 text-sm shadow-sm">
                 Statistik untuk <strong>KAP Survey v{stats.survey.version}</strong> (survey_id {stats.survey.id}) — <strong>{stats.total}</strong> responden pada rentang yang dipilih. Versi survey yang berbeda tidak pernah digabung.
-            </div>
+            </div> : <EmptyState title="Belum ada instrumen KAP historis">Belum tersedia katalog atau respons untuk survei KAP lama. Data Survei Penelitian aktif dapat dilihat melalui menu Survei Penelitian.</EmptyState>}
 
-            {stats.total === 0 ? <EmptyState title="Belum ada responden">Tidak ada submission untuk versi dan rentang tanggal ini.</EmptyState> : stats.sections.map((s) => (
+            {stats.survey && (stats.total === 0 ? <EmptyState title="Belum ada responden">Tidak ada submission untuk versi dan rentang tanggal ini.</EmptyState> : stats.sections.map((s) => (
                 <section key={s.key} className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby={`st-${s.key}`}>
                     <h2 id={`st-${s.key}`} className="text-lg font-bold uppercase tracking-wide text-teal-800">{s.title}</h2>
                     {s.key === 'knowledge' && <p className="mt-1 text-xs text-slate-500">Distribusi Benar/Salah/Tidak tahu per pertanyaan. Kunci jawaban tidak didefinisikan pada survei, sehingga tidak ada skor benar/salah.</p>}
@@ -58,7 +58,7 @@ export default function Statistics({ stats, surveys, filters }) {
                         </div>
                     )) : <ul className="mt-2 divide-y divide-slate-100">{s.questions.map((q) => <QuestionStat key={q.id} q={q} palette={PALETTE[s.scale]} showMean={s.key === 'attitude'} />)}</ul>}
                 </section>
-            ))}
+            )))}
         </AdminLayout>
     );
 }
