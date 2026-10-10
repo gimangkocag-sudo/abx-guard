@@ -64,7 +64,7 @@ function LearnMenu({ isActive }) {
 }
 
 export default function AbxLayout({ children, onLogout = () => {} }) {
-    const { auth } = usePage().props;
+    const { auth, canAccessPharmacistInbox } = usePage().props;
     const user = auth?.user;
     const isActive = useActive();
     const [menu, setMenu] = useState(false);
@@ -114,6 +114,7 @@ export default function AbxLayout({ children, onLogout = () => {} }) {
                         {user ? (
                             <>
                                 <Link href="/dashboard" aria-current={isActive('/dashboard') ? 'page' : undefined} className={cls('/dashboard')}>Dashboard</Link>
+                                {canAccessPharmacistInbox && <Link href="/pharmacist/inbox" aria-current={isActive('/pharmacist/inbox') ? 'page' : undefined} className={cls('/pharmacist/inbox')}>Inbox Apoteker</Link>}
                                 <Link href="/profile" aria-current={isActive('/profile') ? 'page' : undefined} className={cls('/profile')}>Profil</Link>
                                 <Link {...logoutProps} className={`${link} text-slate-600 hover:bg-slate-100 hover:text-slate-950`}>Keluar</Link>
                             </>
@@ -153,6 +154,7 @@ export default function AbxLayout({ children, onLogout = () => {} }) {
                             {user ? (
                                 <>
                                     <Link href="/dashboard" onClick={close} aria-current={isActive('/dashboard') ? 'page' : undefined} className={`flex min-h-11 items-center text-sm ${cls('/dashboard')}`}>Dashboard</Link>
+                                    {canAccessPharmacistInbox && <Link href="/pharmacist/inbox" onClick={close} aria-current={isActive('/pharmacist/inbox') ? 'page' : undefined} className={`flex min-h-11 items-center text-sm ${cls('/pharmacist/inbox')}`}>Inbox Apoteker</Link>}
                                     <Link href="/profile" onClick={close} aria-current={isActive('/profile') ? 'page' : undefined} className={`flex min-h-11 items-center text-sm ${cls('/profile')}`}>Profil</Link>
                                     <Link {...logoutProps} className={`flex min-h-11 w-full items-center text-sm ${link} text-slate-600 hover:bg-slate-100 hover:text-slate-950`}>Keluar</Link>
                                 </>

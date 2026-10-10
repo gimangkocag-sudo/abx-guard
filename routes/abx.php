@@ -10,6 +10,8 @@ use App\Http\Controllers\Admin\SurveyResponseController as AdminSurveyResponseCo
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\LearnController;
+use App\Http\Controllers\PharmacistConnectController;
+use App\Http\Middleware\EnsurePharmacistStaff;
 use App\Http\Controllers\ResearchSurveyController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +23,22 @@ Route::inertia('/smart-abx-alert', 'Abx/SmartAlert')->name('alert');
 Route::get('/belajar/{module}', [LearnController::class, 'show'])->name('learn.show');
 
 // Butuh login
+Route::middleware('auth')->group(function () {
+    Route::get('/pharmacist-connect/conversations', [PharmacistConnectController::class, 'index'])->name('pharmacist.conversations.index');
+    Route::post('/pharmacist-connect/conversations', [PharmacistConnectController::class, 'store'])->middleware('throttle:5,1')->name('pharmacist.conversations.store');
+    Route::get('/pharmacist-connect/conversations/{conversation}', [PharmacistConnectController::class, 'show'])->can('view', 'conversation')->name('pharmacist.conversations.show');
+    Route::post('/pharmacist-connect/conversations/{conversation}/messages', [PharmacistConnectController::class, 'send'])->middleware('throttle:10,1')->name('pharmacist.conversations.messages.store');
+});
+
+Route::middleware(['auth', EnsurePharmacistStaff::class])->prefix('pharmacist')->name('pharmacist.')->group(function () {
+    Route::get('/inbox', fn () => Inertia\Inertia::render('Pharmacist/Inbox'))->name('staff.inbox');
+    Route::get('/inbox/conversations', [PharmacistConnectController::class, 'inbox'])->name('staff.inbox.conversations');
+    Route::post('/inbox/conversations/{conversation}/claim', [PharmacistConnectController::class, 'claim'])->middleware('throttle:20,1')->name('staff.conversations.claim');
+    Route::post('/inbox/conversations/{conversation}/messages', [PharmacistConnectController::class, 'send'])->middleware(['can:send,conversation', 'throttle:10,1'])->name('staff.conversations.messages.store');
+    Route::patch('/inbox/conversations/{conversation}/status', [PharmacistConnectController::class, 'updateStatus'])->middleware('throttle:20,1')->name('staff.conversations.status');
+    Route::get('/inbox/conversations/{conversation}', [PharmacistConnectController::class, 'show'])->middleware('can:view,conversation')->name('staff.conversations.show');
+});
+
 Route::middleware('auth')->group(function () {
     Route::get('/survei-penelitian', [ResearchSurveyController::class, 'show'])->name('research-survey.show');
     Route::post('/survei-penelitian/evaluation/unlock', [ResearchSurveyController::class, 'unlockEvaluation'])->name('research-survey.unlock');

@@ -34,6 +34,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'canAccessPharmacistInbox' => fn () => (bool) $request->user()?->isActivePharmacistStaff(),
         ];
     }
 }

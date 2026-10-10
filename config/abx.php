@@ -3,6 +3,18 @@
 return [
     'survey_slug' => 'kap',
 
+    'pharmacist_connect' => [
+        // Public messaging remains off until staffing, schedules, privacy policy, and
+        // response procedures have been approved and configured by an operator.
+        'operational' => (bool) env('PHARMACIST_CONNECT_OPERATIONAL', false),
+        'poll_interval_ms' => (int) env('PHARMACIST_CONNECT_POLL_INTERVAL_MS', 10000),
+        // Browser-facing values are public. Reverb app secret is never shared with Inertia.
+        'reverb_public_host' => env('REVERB_PUBLIC_HOST'),
+        'reverb_public_port' => (int) env('REVERB_PUBLIC_PORT', 443),
+        'reverb_public_scheme' => env('REVERB_PUBLIC_SCHEME', 'https'),
+        'reverb_public_key' => env('REVERB_APP_KEY'),
+    ],
+
     // Modul belajar (dipakai routing, pelacakan progres, dan dashboard). Urutan = urutan progres.
     'modules' => [
         'bijak-antibiotik' => ['title' => 'Bijak Antibiotik', 'component' => 'Abx/Bijak'],

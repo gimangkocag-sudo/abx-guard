@@ -5,6 +5,8 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -45,5 +47,25 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function pharmacistStaffMembership(): HasOne
+    {
+        return $this->hasOne(PharmacistStaff::class, 'user_id');
+    }
+
+    public function pharmacistConversations(): HasMany
+    {
+        return $this->hasMany(PharmacistConversation::class, 'user_id');
+    }
+
+    public function assignedPharmacistConversations(): HasMany
+    {
+        return $this->hasMany(PharmacistConversation::class, 'assigned_staff_id');
+    }
+
+    public function isActivePharmacistStaff(): bool
+    {
+        return $this->pharmacistStaffMembership()->where('active', true)->exists();
     }
 }

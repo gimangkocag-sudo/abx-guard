@@ -58,6 +58,7 @@ WORKDIR /app
 COPY --from=dependencies --chown=www-data:www-data /app /app
 COPY --from=frontend --chown=www-data:www-data /app/public/build /app/public/build
 COPY --chown=root:root Caddyfile /etc/caddy/Caddyfile
+COPY --chown=root:root docker/start-abx.sh /usr/local/bin/start-abx.sh
 
 RUN mkdir -p \
         storage/framework/cache/data \
@@ -68,10 +69,11 @@ RUN mkdir -p \
         /config \
         /data \
     && chown -R www-data:www-data storage bootstrap/cache /config /data \
-    && chmod -R ug+rwX storage bootstrap/cache /config /data
+    && chmod -R ug+rwX storage bootstrap/cache /config /data \
+    && chmod 755 /usr/local/bin/start-abx.sh
 
 USER www-data
 
 EXPOSE 8080
 
-ENTRYPOINT ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+ENTRYPOINT ["/usr/local/bin/start-abx.sh"]
