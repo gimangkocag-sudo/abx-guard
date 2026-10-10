@@ -76,6 +76,41 @@ class ResearchSurveyFlowTest extends TestCase
         $this->assertSame(36, \App\Models\SurveyQuestion::count());
     }
 
+    public function test_admin_can_also_open_the_user_research_survey(): void
+    {
+        $admin = User::factory()->create();
+        $admin->forceFill(['role' => 'admin'])->save();
+
+        $this->actingAs($admin)->get('/survei-penelitian')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Research/Survey')
+                ->where('stage', 'initial')
+                ->where('itemCount', 30));
+    }
+
+    public function test_rerunning_instrument_seeder_preserves_existing_submissions_and_answers(): void
+    {
+        $user = User::factory()->create();
+        $instrument = $this->instrument();
+
+        app(ResearchSurveyService::class)->saveDraft($user, $instrument, 'initial', ['A01' => 'Inisial tersimpan'], []);
+
+        $this->seed(ResearchInstrumentSeeder::class);
+
+        $this->assertDatabaseHas('research_submissions', [
+            'user_id' => $user->id,
+            'instrument_id' => $instrument->id,
+            'stage' => 'initial',
+            'status' => 'draft',
+        ]);
+        $this->assertDatabaseHas('research_answers', [
+            'submission_id' => ResearchSubmission::where('user_id', $user->id)->value('id'),
+            'item_id' => ResearchItem::where('code', 'A01')->value('id'),
+            'value' => 'Inisial tersimpan',
+        ]);
+    }
+
     public function test_frontend_and_backend_limits_social_platforms_and_exclusive_unknown_option(): void
     {
         $user = User::factory()->create();
