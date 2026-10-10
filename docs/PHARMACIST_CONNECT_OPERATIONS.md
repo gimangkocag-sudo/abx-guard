@@ -50,12 +50,13 @@ The web application keeps polling available when Reverb is not configured. Rever
 | `ABX_PROCESS` | **Reverb service:** set to `websocket`. The web service should leave this unset or use `web`. |
 | `REVERB_SERVER_HOST` | **Reverb service:** listener bind address; default `0.0.0.0`. |
 | `REVERB_SERVER_PORT` | **Reverb service:** fallback listener port only when Railway does not inject `PORT`. The entrypoint prioritizes `$PORT`. |
+| `CACHE_STORE` | **WebSocket process:** the entrypoint forces Laravel's file cache so Reverb's restart-marker lookup cannot fall back to SQLite when web database variables are absent. This does not change the web process cache store. |
 
 Do not enter secret values in Git, `VITE_*`, or this document. Set `REVERB_APP_SECRET` as a Railway secret in both the web and Reverb services. The key, app ID, and internal/public host/port variables must match the same Reverb application.
 
 ### Reverb service layout
 
-The project Docker image supports both the existing FrankenPHP web process and a dedicated Reverb process. Keep the existing ABX Guard service running with the default process. In the same Railway project and environment, create a second service from the same repository and Dockerfile, set `ABX_PROCESS=websocket`, and expose the service's HTTP listener port (the container binds Reverb to `0.0.0.0:$PORT`, normally `8080`) on a generated Railway domain. Railway terminates public HTTPS/WSS at the edge. Do not point browser clients to the private host. The web service publishes events to the Reverb service's private hostname and listener port over HTTP.
+The project Docker image supports both the existing FrankenPHP web process and a dedicated Reverb process. Keep the existing ABX Guard service running with the default process. In the same Railway project and environment, create a second service from the same repository and Dockerfile, set `ABX_PROCESS=websocket`, and expose the service's HTTP listener port (the container binds Reverb to `0.0.0.0:$PORT`, normally `8080`) on a generated Railway domain. The entrypoint selects file cache for this process because Reverb accesses Laravel cache at startup; it does not need the web database for that cache access. Railway terminates public HTTPS/WSS at the edge. Do not point browser clients to the private host. The web service publishes events to the Reverb service's private hostname and listener port over HTTP.
 
 After setting Reverb variables, redeploy both services. In browser developer tools, verify a WSS connection to the public WebSocket host, successful authenticated `POST /broadcasting/auth`, and incoming `pharmacist.message.created` events on a `private-pharmacist.conversations.*` channel using two authorized accounts. Also verify an unrelated account receives 403 at channel authorization. Until this two-sided check succeeds, the UI continues polling and must be reported as fallback mode.
 
