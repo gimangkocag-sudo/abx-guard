@@ -14,8 +14,9 @@ export default function SurveyIndex({ rows, pagination, filters, surveys, export
     ];
     const exportHref = `/admin/export/kap?${qs({ ...filters, survey: filters.survey || exportSurvey.id })}`;
     return (
-        <AdminLayout title="KAP Survey — Responses">
-            <Head title="Admin — KAP Responses" />
+        <AdminLayout title="Histori KAP Lama">
+            <Head title="Admin — Histori KAP Lama" />
+            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Data historis instrumen KAP 36 item. Instrumen ini tidak lagi aktif untuk pengisian baru; gunakan menu Survei Penelitian untuk data instrumen saat ini.</p>
             <FilterBar action="/admin/survey" values={filters} fields={fields}>
                 <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV (v{exportSurvey.version})</a>
             </FilterBar>

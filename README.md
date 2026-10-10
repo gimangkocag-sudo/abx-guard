@@ -49,21 +49,22 @@ npm run dev                           # terminal 1
 php artisan serve                     # terminal 2  -> http://127.0.0.1:8000
 ```
 
-Seeder bersifat idempotent (`updateOrCreate`), aman dijalankan ulang: `php artisan db:seed`.
+Seeder utama memublikasikan instrumen baru dan fitur lain; seeder KAP historis sengaja tidak dijalankan ulang. Pada database existing, gunakan hanya seeder `ResearchInstrumentSeeder` setelah migration.
 
 ## Yang ada di Fase 1
 
 | Area | Detail |
 |---|---|
 | Database | `surveys`, `survey_sections`, `survey_questions`, `survey_submissions`, `survey_answers`, `challenge_questions`, `challenge_attempts`, `challenge_answers`; kolom `users.role` |
-| Survey | 36 item dari PDF (Knowledge 5, Attitude 5, Practice 6, Acceptance 20, dengan sub-kelompok), versi survey tersimpan di tiap submission |
+| Survei pengguna aktif | Kuesioner penelitian DOCX (47 item, tahap awal A–E dan evaluasi F–H), versi instrumen dan tahap tersimpan pada submission |
+| Histori survei | KAP 36 item lama tetap disimpan di tabel `survey_*` untuk referensi admin; tidak lagi tersedia untuk pengisian pengguna |
 | Aturan | satu submission per user (unique `user_id + survey_id`); jawaban disimpan relasional (satu baris per pertanyaan), dalam satu transaksi |
 | Validasi | backend membangun aturan dari pertanyaan di database: semua item wajib, nilai harus sesuai skala |
 | UI survey | stepper 5 layar (Knowledge → Attitude → Practice → Acceptance → Review) lalu Kirim; progres 20–100%; Lanjut/Kembali; jawaban tetap saat pindah langkah (state + sessionStorage); radio besar; ada label teks pada error |
 | Auth | register/login/logout/reset password/profil dari Breeze |
 | Role | `user` (default) dan `admin`; `role` tidak mass-assignable, jadi registrasi tidak bisa membuat admin |
 | Otorisasi | middleware `EnsureUserIsAdmin` di route `/admin` (403 untuk non-admin); route survey hanya untuk user login; user hanya memproses datanya sendiri |
-| Dashboard | user: sapaan, status KAP Survey, skor AMR Challenge terakhir; admin: total user, submission, completion, attempt challenge, 10 submission terbaru |
+| Dashboard | user: sapaan, status survei penelitian, progres belajar, dan AMR Challenge; admin: statistik submission instrumen aktif dan challenge |
 
 Akun admin dibuat dari `ADMIN_EMAIL` dan `ADMIN_PASSWORD`.
 - Di environment **local/testing**, jika `ADMIN_PASSWORD` kosong, seeder memakai password development bawaan `ChangeMe-Dev-123!`.
@@ -101,7 +102,7 @@ Database yang sama dengan Fase 1 (tidak ada database kedua). Migration baru `202
 ### File utama Fase 2
 - Backend: `app/Http/Controllers/{LearnController,ChallengeController}.php`, `app/Services/{ChallengeService,LearningProgressService}.php`, `app/Http/Requests/SubmitChallengeRequest.php`, `app/Policies/ChallengeAttemptPolicy.php`, `app/Models/LearningProgress.php`; diubah: `DashboardController`, `routes/abx.php`, `config/abx.php`.
 - Frontend: `resources/js/Layouts/AbxLayout.jsx` (navigasi responsif); `resources/js/Components/Abx/*` (Button, Card, PageContainer, SectionHeader, EducationalCard, Accordion, RichBlocks, ProgressBar, QuizOption, QuizPlayer, CTASection, Disclaimer, ClosingBlock, FadeIn); `resources/js/Pages/Abx/*` dan `Pages/Dashboard.jsx`; `resources/js/content/*`.
-- `Pages/Abx/Survey.jsx` (Fase 1) hanya diubah untuk memakai `AbxLayout` dan menampilkan judul; logika survey tidak berubah. Halaman admin Fase 1 tetap memakai layout Breeze (Fase 3).
+- Formulir pengguna KAP lama telah dipensiunkan. Skema dan halaman admin respons lama dipertahankan khusus histori.
 
 ### Belum ada / belum diverifikasi (Fase 2)
 - Belum dijalankan di browser: tampilan responsif, fokus keyboard, dan kontras warna baru diperiksa dari kode, belum diuji di perangkat.
@@ -133,9 +134,9 @@ Rute user `/amr-challenge/hasil/{attempt}` tetap hanya untuk pemilik attempt (po
 ### Cara memakai dashboard admin
 1. Login dengan akun admin (lihat "Akun admin"), lalu buka `/admin` (tautan "Buka Admin Dashboard" ada di Dashboard user).
 2. **Users**: ketik nama/email dan/atau pilih role, lalu *Terapkan*. Password tidak pernah dimuat. Status KAP mengacu ke versi survey default (lihat "Versi aktif").
-3. **KAP Survey**: pilih versi dan rentang tanggal untuk menyaring; klik ID untuk melihat detail jawaban.
+3. **Survei Penelitian**: filter versi, tahap, status, dan tanggal; lihat detail jawaban serta distribusi item.
 4. **Statistik**: pilih versi survey dan (opsional) tanggal mulai/akhir. Halaman selalu untuk satu versi; ganti dropdown untuk melihat versi lain.
-5. **Export CSV**: tombol ada di halaman KAP Survey dan Statistik dan membawa filter yang sedang dipilih.
+5. **Export CSV**: gunakan tombol pada Survei Penelitian. Histori KAP hanya dapat dibuka dari menu histori.
 
 ### Statistik KAP
 - Dihitung dengan **satu query `GROUP BY question_id, value`** di database (join ke `survey_submissions` untuk filter `survey_id` dan tanggal); PHP hanya menyusun hasil. Jumlah responden dihitung dengan `COUNT`. Daftar, users, dan detail memakai eager loading/subquery + paginasi (tanpa N+1).
@@ -174,7 +175,7 @@ Query memakai Eloquent/query builder dengan binding; satu-satunya SQL mentah ada
 
 ## Keputusan versioning survey
 
-Saat ini hanya ada KAP Survey v1, sehingga skema tidak diubah. Aturan yang berlaku agar Fase 3 (statistik dan riwayat submission) konsisten:
+Aturan berikut mendeskripsikan struktur historis KAP yang dipertahankan untuk membaca submission lama; instrumen ini tidak lagi aktif bagi pengguna:
 
 1. **Satu versi survey = satu baris `surveys`** (`survey_id` sendiri, beserta section dan pertanyaannya). Kolom `surveys.version` menandai versi tersebut dan disalin ke `survey_submissions.survey_version` saat submit.
 2. Constraint `unique(user_id, survey_id)` berarti **satu submission per user per versi**. Karena versi 2 memakai `survey_id` berbeda, user tetap bisa mengisi v2 dan riwayat v1 tetap utuh.
@@ -189,6 +190,23 @@ Fase 1 (core), Fase 2 (user experience), dan Fase 3 (admin) sudah dikerjakan. Ti
 
 ## Deployment (ringkas)
 
-- **Railway:** buat service dari repo, tambahkan database MySQL/PostgreSQL, isi variabel env (`APP_KEY` dari `php artisan key:generate --show`, `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL`, `DB_*`, `ADMIN_*`). Build: `composer install --no-dev --optimize-autoloader && npm ci && npm run build`. Release: `php artisan migrate --force && php artisan db:seed --force`.
+- **Railway:** pertahankan environment produksi yang sudah ada. Build: `composer install --no-dev --optimize-autoloader && npm ci && npm run build`. Release untuk instrumen baru: `php artisan migrate --force && php artisan db:seed --class="Database\\Seeders\\ResearchInstrumentSeeder" --force`.
 - **VPS (Nginx + PHP-FPM):** arahkan document root ke `public/`, jalankan perintah build di atas, `php artisan config:cache route:cache`, pastikan `storage/` dan `bootstrap/cache/` writable oleh user web server, aktifkan HTTPS.
-- Jangan pernah commit `.env`. Ganti kredensial admin sebelum `db:seed` di production.
+- Jangan pernah commit `.env`; jangan jalankan seeder penuh pada database existing hanya untuk menerbitkan instrumen baru.
+
+## Survei Penelitian ABX Guard
+
+Instrumen penelitian berbasis DOCX adalah satu-satunya survei aktif dan menggantikan formulir KAP 36 item lama. Tahap awal menyimpan A–E; evaluasi F–H terkunci sampai responden mengonfirmasi telah mendapat pemaparan atau mencoba platform. Konfirmasi adalah pernyataan responden, bukan verifikasi intervensi. Jawaban mentah D1 dan SUS disimpan; kunci pengetahuan dan skor SUS belum tersedia/disetujui. Data KAP yang sudah ada tetap utuh sebagai histori dan tidak disertakan pada statistik survei baru.
+
+Untuk environment yang sudah memiliki database:
+
+```bash
+php artisan migrate
+php artisan db:seed --class="Database\Seeders\ResearchInstrumentSeeder"
+```
+
+Di Railway, jalankan migration aditif dengan `php artisan migrate --force`, lalu seeder khusus di atas dengan `--force`. Jangan gunakan `migrate:fresh`. Migration menambah lima tabel `research_*` dan tidak mengubah data KAP lama. Full `db:seed` tidak lagi menjalankan seeder KAP lama. Rollback migration akan ditolak jika sudah ada draft atau jawaban penelitian agar respons tidak terhapus.
+
+Pengguna yang masuk mengisi `/survei-penelitian`; URL lama `/kap-survey` dan `/survey` mengarah ke instrumen aktif ini dan tidak menerima POST KAP lama. Admin membuka `/admin/research-survey` untuk filter, detail, ringkasan distribusi per item, dan ekspor CSV. Data KAP historis hanya tersedia melalui menu Histori KAP/Statistik KAP Historis. Berkas sumber DOCX tetap berada di lokasi Downloads yang diberikan pemilik; substansi, pemetaan, dan keputusan tertunda dicatat di `docs/KUESIONER_IMPLEMENTATION_MAP.md` dan `docs/KUESIONER_REVIEW_NOTES.md`.
+
+Tema biru memakai token CSS `--abx-*` dan alias warna `teal-*` di `tailwind.config.js` untuk menjaga halaman ABX Guard lama tetap satu palet. Warna status seperti error, sukses, dan peringatan tetap semantik.

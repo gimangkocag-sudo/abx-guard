@@ -26,8 +26,9 @@ export default function Statistics({ stats, surveys, filters }) {
     ];
     const exportHref = `/admin/export/kap?${qs({ survey: filters.survey, from: filters.from, to: filters.to })}`;
     return (
-        <AdminLayout title="Statistik KAP">
-            <Head title="Admin — Statistik KAP" />
+        <AdminLayout title="Statistik KAP Historis">
+            <Head title="Admin — Statistik KAP Historis" />
+            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Statistik ini hanya mencakup respons historis instrumen KAP lama. Untuk instrumen aktif, buka <a className="font-semibold underline" href="/admin/research-survey">Survei Penelitian</a>.</p>
             <FilterBar action="/admin/statistics" values={{ survey: filters.survey, from: filters.from, to: filters.to }} fields={fields}>
                 <a href={exportHref} className="ml-auto inline-flex min-h-11 items-center rounded-lg border border-teal-700 px-4 text-sm font-semibold text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Unduh CSV sesuai filter</a>
             </FilterBar>

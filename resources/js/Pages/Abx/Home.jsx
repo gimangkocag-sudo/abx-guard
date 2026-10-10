@@ -11,12 +11,12 @@ import { EXPLORE } from '@/content/misc';
 function Illustration() {
     return (
         <svg viewBox="0 0 320 260" role="img" aria-label="Ilustrasi perisai dengan daun dan mikroorganisme" className="mx-auto w-full max-w-sm">
-            <circle cx="160" cy="130" r="118" fill="#ccfbf1" />
-            <circle cx="70" cy="70" r="16" fill="#99f6e4" /><circle cx="254" cy="196" r="22" fill="#99f6e4" /><circle cx="262" cy="64" r="10" fill="#5eead4" />
-            <path d="M160 40l78 28v58c0 52-34 84-78 100-44-16-78-48-78-100V68z" fill="#0d9488" />
-            <path d="M160 70c-30 10-48 34-48 62 34-2 60-22 48-62z" fill="#f0fdfa" opacity=".95" />
-            <path d="M160 74v96" stroke="#0f766e" strokeWidth="5" strokeLinecap="round" />
-            <path d="M160 146c26-4 40-20 44-42-26 2-42 18-44 42z" fill="#99f6e4" />
+            <circle cx="160" cy="130" r="118" fill="#DCEEFF" />
+            <circle cx="70" cy="70" r="16" fill="#B7DAF7" /><circle cx="254" cy="196" r="22" fill="#B7DAF7" /><circle cx="262" cy="64" r="10" fill="#84B8E2" />
+            <path d="M160 40l78 28v58c0 52-34 84-78 100-44-16-78-48-78-100V68z" fill="#1769AA" />
+            <path d="M160 70c-30 10-48 34-48 62 34-2 60-22 48-62z" fill="#F5F9FF" opacity=".95" />
+            <path d="M160 74v96" stroke="#163B70" strokeWidth="5" strokeLinecap="round" />
+            <path d="M160 146c26-4 40-20 44-42-26 2-42 18-44 42z" fill="#B7DAF7" />
         </svg>
     );
 }

@@ -3,22 +3,28 @@
 namespace App\Services;
 
 use App\Models\ChallengeAttempt;
-use App\Models\Survey;
-use App\Models\SurveySubmission;
+use App\Models\ResearchInstrument;
+use App\Models\ResearchSubmission;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class AdminDashboardService
 {
-    public function dashboard(?Survey $active): array
+    public function dashboard(): array
     {
         $users = User::where('role', 'user')->count();
-        $activeSubmissions = $active
-            ? SurveySubmission::where('survey_id', $active->id)->whereHas('user', fn ($query) => $query->where('role', 'user'))->count()
-            : 0;
+        $instrument = ResearchInstrument::where('key', 'abx-guard-research')->where('is_active', true)->orderByDesc('version')->first();
+        $base = ResearchSubmission::query()->where('instrument_id', $instrument?->id)
+            ->where('instrument_version', $instrument?->version)
+            ->whereHas('user', fn ($query) => $query->where('role', 'user'));
+        $initialSubmissions = (clone $base)->where('stage', 'initial')->where('status', 'submitted')->count();
+        $evaluationSubmissions = (clone $base)->where('stage', 'evaluation')->where('status', 'submitted')->count();
 
         // Completion hanya membandingkan submission versi aktif dengan akun responden non-admin.
-        $perDay = SurveySubmission::query()
+        $perDay = ResearchSubmission::query()
+            ->where('instrument_id', $instrument?->id)
+            ->where('instrument_version', $instrument?->version)
+            ->where('status', 'submitted')
             ->whereHas('user', fn ($query) => $query->where('role', 'user'))
             ->where('submitted_at', '>=', now()->subDays(13)->startOfDay())
             ->groupBy(DB::raw('DATE(submitted_at)'))
@@ -33,19 +39,19 @@ class AdminDashboardService
         return [
             'stats' => [
                 'users' => $users,
-                'submissions' => SurveySubmission::count(),
-                'activeSubmissions' => $activeSubmissions,
-                'completion' => $users > 0 ? round($activeSubmissions / $users * 100, 1) : 0,
+                'researchSubmissions' => (clone $base)->where('status', 'submitted')->count(),
+                'researchDrafts' => (clone $base)->where('status', 'draft')->count(),
+                'initialSubmissions' => $initialSubmissions,
+                'evaluationSubmissions' => $evaluationSubmissions,
+                'completion' => $users > 0 ? round($initialSubmissions / $users * 100, 1) : 0,
                 'challengeAttempts' => ChallengeAttempt::whereNotNull('completed_at')->count(),
             ],
-            'activeSurvey' => $active ? ['id' => $active->id, 'version' => $active->version, 'title' => $active->title] : null,
-            'versions' => Survey::withCount('submissions')->orderByDesc('version')->get()
-                ->map(fn ($s) => ['id' => $s->id, 'version' => $s->version, 'isActive' => $s->is_active, 'submissions' => $s->submissions_count])->all(),
+            'activeInstrument' => $instrument ? ['version' => $instrument->version, 'title' => $instrument->title] : null,
             'submissionsPerDay' => $series,
-            'recent' => SurveySubmission::with(['user:id,name,email', 'survey:id,version'])->latest('submitted_at')->limit(10)->get()
+            'recent' => (clone $base)->where('status', 'submitted')->with('user:id,name,email')->latest('submitted_at')->limit(10)->get()
                 ->map(fn ($s) => [
                     'id' => $s->id, 'name' => $s->user?->name, 'email' => $s->user?->email,
-                    'version' => $s->survey?->version, 'submittedAt' => $s->submitted_at?->toIso8601String(),
+                    'version' => $s->instrument_version, 'stage' => $s->stage, 'submittedAt' => $s->submitted_at?->toIso8601String(),
                 ])->all(),
             'challenge' => $this->challengeSummary(),
         ];

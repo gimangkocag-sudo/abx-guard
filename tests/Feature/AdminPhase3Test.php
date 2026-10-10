@@ -7,6 +7,7 @@ use App\Models\Survey;
 use App\Models\SurveySubmission;
 use App\Models\User;
 use Database\Seeders\AdminSeeder;
+use Database\Seeders\SurveySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -25,6 +26,8 @@ class AdminPhase3Test extends TestCase
     {
         parent::setUp();
         $this->seed();
+        // This suite exercises retained legacy KAP reporting as historical data.
+        $this->seed(SurveySeeder::class);
     }
 
     private function admin(): User

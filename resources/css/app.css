@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --abx-navy: 22 59 112;
+    --abx-primary: 23 105 170;
+    --abx-light-blue: 220 238 255;
+    --abx-pale: 245 249 255;
+}
+
+:focus-visible {
+    outline-color: rgb(var(--abx-primary));
+}

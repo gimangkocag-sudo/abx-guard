@@ -6,7 +6,7 @@ export const EXPLORE = [
     { icon: '🥛', title: 'Pangan Fungsional', href: '/belajar/pangan-fungsional', text: 'Kenali Bakteri Asam Laktat dan pangan fungsional.' },
     { icon: '💬', title: 'Tanya Apoteker', href: '/belajar/pharmacist-connect', text: 'Tanyakan informasi mengenai obat dan penggunaan antibiotik kepada apoteker.' },
     { icon: '🎯', title: 'AMR Challenge', href: '/amr-challenge', text: 'Uji pengetahuanmu dalam 5 pertanyaan!' },
-    { icon: '📝', title: 'KAP Survey', href: '/kap-survey', text: 'Kenali pemahamanmu tentang antibiotik.' },
+    { icon: '📝', title: 'Survei Penelitian', href: '/survei-penelitian', text: 'Bagikan pengalaman dan evaluasimu tentang edukasi ABX Guard.' },
 ];
 
 export const CLOSING = {

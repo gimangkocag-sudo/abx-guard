@@ -8,6 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([AdminSeeder::class, SurveySeeder::class, ChallengeSeeder::class]);
+        // The legacy KAP catalog/answers are historical; a full seed must not rewrite them.
+        $this->call([AdminSeeder::class, ResearchInstrumentSeeder::class, ChallengeSeeder::class]);
     }
 }

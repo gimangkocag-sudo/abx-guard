@@ -9,13 +9,13 @@ export default function GuestLayout({ children }) {
             </div>
 
             <div className="relative z-10 w-full max-w-md">
-                <Link href="/" className="mb-7 inline-flex rounded-md text-sm font-medium text-slate-600 transition hover:text-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-4">
+                <Link href="/" className="mb-7 inline-flex rounded-md text-sm font-medium text-slate-600 transition hover:text-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-4">
                     ← Kembali ke Beranda
                 </Link>
 
                 <header className="mb-7 text-center">
-                    <Link href="/" className="inline-flex flex-col items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-4">
-                        <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-lg shadow-emerald-900/15" aria-hidden="true">
+                    <Link href="/" className="inline-flex flex-col items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-4">
+                        <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-700 text-white shadow-lg shadow-teal-900/15" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" stroke="currentColor" strokeWidth="1.8">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 3.75v3m8-3v3M5.5 8.25h13m-11.25-4.5h9.5A2.25 2.25 0 0 1 19 6v12a2.25 2.25 0 0 1-2.25 2.25h-9.5A2.25 2.25 0 0 1 5 18V6a2.25 2.25 0 0 1 2.25-2.25Z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m-3-3h6" />

@@ -7,8 +7,8 @@ import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-const inputClass = 'mt-1 block w-full max-w-full rounded-lg border-slate-300 px-3.5 py-3 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-emerald-600 focus:ring-emerald-600';
-const focusLink = 'rounded-sm text-sm font-medium text-emerald-800 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2';
+const inputClass = 'mt-1 block w-full max-w-full rounded-lg border-slate-300 px-3.5 py-3 text-base text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-teal-600 focus:ring-teal-600';
+const focusLink = 'rounded-sm text-sm font-medium text-teal-800 underline decoration-teal-300 underline-offset-4 hover:text-teal-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2';
 
 export default function Login({ status, canResetPassword }) {
     const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +48,7 @@ export default function Login({ status, canResetPassword }) {
                     <InputLabel htmlFor="password" value="Password" className="text-slate-700" />
                     <div className="relative mt-1">
                         <TextInput id="password" type={showPassword ? 'text' : 'password'} name="password" value={data.password} className={`${inputClass} pr-24`} autoComplete="current-password" onChange={(e) => setData('password', e.target.value)} required />
-                        <button type="button" onClick={() => setShowPassword((shown) => !shown)} aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} aria-pressed={showPassword} className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
+                        <button type="button" onClick={() => setShowPassword((shown) => !shown)} aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'} aria-pressed={showPassword} className="absolute inset-y-0 right-2 my-auto rounded-md px-2 text-sm font-medium text-teal-800 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
                             {showPassword ? 'Sembunyikan' : 'Tampilkan'}
                         </button>
                     </div>
@@ -57,13 +57,13 @@ export default function Login({ status, canResetPassword }) {
 
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                     <label htmlFor="remember" className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                        <Checkbox id="remember" name="remember" checked={data.remember} onChange={(e) => setData('remember', e.target.checked)} className="text-emerald-700 focus:ring-emerald-600" />
+                        <Checkbox id="remember" name="remember" checked={data.remember} onChange={(e) => setData('remember', e.target.checked)} className="text-teal-700 focus:ring-teal-600" />
                         Ingat saya
                     </label>
                     {canResetPassword && <Link href={route('password.request')} className={focusLink}>Lupa password?</Link>}
                 </div>
 
-                <PrimaryButton type="submit" disabled={processing} className="mt-6 flex min-h-12 w-full justify-center rounded-lg bg-emerald-700 px-5 text-sm normal-case tracking-normal shadow-sm hover:bg-emerald-800 focus:bg-emerald-800 focus:ring-emerald-600 disabled:cursor-not-allowed disabled:opacity-60">
+                <PrimaryButton type="submit" disabled={processing} className="mt-6 flex min-h-12 w-full justify-center rounded-lg bg-teal-700 px-5 text-sm normal-case tracking-normal shadow-sm hover:bg-teal-800 focus:bg-teal-800 focus:ring-teal-600 disabled:cursor-not-allowed disabled:opacity-60">
                     {processing ? <><span aria-hidden="true" className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />Memproses...</> : 'Login'}
                 </PrimaryButton>
             </form>
