@@ -5,6 +5,6 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "preDeployCommand": "php artisan migrate --force && php artisan db:seed --class='Database\\Seeders\\ResearchInstrumentSeeder' --force"
+    "preDeployCommand": "if [ \"${ABX_PROCESS:-web}\" != \"websocket\" ]; then php artisan migrate --force && php artisan db:seed --class='Database\\Seeders\\ResearchInstrumentSeeder' --force; else echo 'Skipping web pre-deploy tasks for WebSocket service.'; fi"
   }
 }

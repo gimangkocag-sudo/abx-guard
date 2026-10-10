@@ -28,33 +28,38 @@ The user page explains that this is not an emergency service, automatic diagnosi
 
 ## Railway configuration
 
-The web application keeps polling available when Reverb is not configured. These variables are optional for fallback operation:
+The existing `railway.json` pre-deploy command runs the current web release tasks: `php artisan migrate --force`, followed by `ResearchInstrumentSeeder --force`. The command is guarded by `ABX_PROCESS`: it defaults to the web process and skips both tasks when `ABX_PROCESS=websocket`. Keep the existing web pre-deploy behavior; do not configure the Reverb service to run migrations or seeders. The survey seeder is part of the existing deployment contract and is not a pharmacist staff seeder.
+
+The web application keeps polling available when Reverb is not configured. Reverb-specific values are optional for fallback operation:
 
 | Variable | Purpose |
 | --- | --- |
-| `BROADCAST_CONNECTION` | Set to `reverb` only after the WebSocket service is running; default is `null`. |
-| `REVERB_APP_ID` | Shared Reverb application identifier. |
-| `REVERB_APP_KEY` | Shared Reverb application key; public to authenticated browser clients. |
-| `REVERB_APP_SECRET` | Shared Reverb application secret; server-side only. Never use a `VITE_` prefix. |
-| `REVERB_HOST` | Private Railway hostname of the Reverb service, without scheme. |
-| `REVERB_PORT` | Private Reverb listener port (normally `8080`). |
-| `REVERB_SCHEME` | Internal publishing scheme (normally `http` over Railway private networking). |
-| `REVERB_PUBLIC_HOST` | Public Railway domain assigned to the WebSocket service, without scheme. |
-| `REVERB_PUBLIC_PORT` | Public WebSocket port (normally `443` for a Railway HTTPS domain). |
-| `REVERB_PUBLIC_SCHEME` | Browser scheme (`https` enables `wss`). |
-| `REVERB_ALLOWED_ORIGINS` | Comma-separated origin hostnames, without scheme; use the exact ABX Guard web host(s), never `*` in production. |
-| `PHARMACIST_CONNECT_OPERATIONAL` | Keep `false` until the operational readiness conditions above are met. |
-| `PHARMACIST_CONNECT_POLL_INTERVAL_MS` | Poll fallback cadence; bounded by the application to 5–30 seconds. |
+| `BROADCAST_CONNECTION` | **Web:** set to `reverb` only after the WebSocket service is running; otherwise keep `null`. |
+| `REVERB_APP_ID` | **Web + Reverb:** shared Reverb application identifier. |
+| `REVERB_APP_KEY` | **Web + Reverb:** shared application key, intentionally sent to authenticated browser sessions; it is not the signing secret. |
+| `REVERB_APP_SECRET` | **Web + Reverb:** shared signing secret, server-side only. Never use a `VITE_` prefix. |
+| `REVERB_HOST` | **Web:** private Railway hostname of the Reverb service, without scheme. |
+| `REVERB_PORT` | **Web:** private listener port matching the Reverb service's `$PORT` (normally `8080`). |
+| `REVERB_SCHEME` | **Web:** internal publishing scheme, normally `http` over Railway private networking. |
+| `REVERB_PUBLIC_HOST` | **Web + Reverb:** public Railway domain assigned to the WebSocket service, without scheme. |
+| `REVERB_PUBLIC_PORT` | **Web:** public WebSocket port, normally `443` for a Railway HTTPS domain. |
+| `REVERB_PUBLIC_SCHEME` | **Web:** browser scheme; use `https` to connect with WSS. |
+| `REVERB_ALLOWED_ORIGINS` | **Web + Reverb:** comma-separated allowed ABX Guard web hostnames, without scheme; never `*` in production. |
+| `PHARMACIST_CONNECT_OPERATIONAL` | **Web:** keep `false` until the operational readiness conditions above are met. |
+| `PHARMACIST_CONNECT_POLL_INTERVAL_MS` | Web polling fallback cadence; bounded by the application to 5–30 seconds. |
+| `ABX_PROCESS` | **Reverb service:** set to `websocket`. The web service should leave this unset or use `web`. |
+| `REVERB_SERVER_HOST` | **Reverb service:** listener bind address; default `0.0.0.0`. |
+| `REVERB_SERVER_PORT` | **Reverb service:** fallback listener port only when Railway does not inject `PORT`. The entrypoint prioritizes `$PORT`. |
 
 Do not enter secret values in Git, `VITE_*`, or this document. Set `REVERB_APP_SECRET` as a Railway secret in both the web and Reverb services. The key, app ID, and internal/public host/port variables must match the same Reverb application.
 
 ### Reverb service layout
 
-The project Docker image supports both the existing FrankenPHP web process and a dedicated Reverb process. Keep the existing ABX Guard service running with the default process. In the same Railway project and environment, create a second service from the same repository and Dockerfile, set `ABX_PROCESS=websocket`, and expose its HTTP port `8080` on a generated Railway domain. The container binds Reverb to `0.0.0.0:$PORT`; Railway terminates public HTTPS/WSS at the edge. Do not point browser clients to the private host. The web service publishes events to the Reverb service's private hostname over `http://<private-host>:8080`.
+The project Docker image supports both the existing FrankenPHP web process and a dedicated Reverb process. Keep the existing ABX Guard service running with the default process. In the same Railway project and environment, create a second service from the same repository and Dockerfile, set `ABX_PROCESS=websocket`, and expose the service's HTTP listener port (the container binds Reverb to `0.0.0.0:$PORT`, normally `8080`) on a generated Railway domain. Railway terminates public HTTPS/WSS at the edge. Do not point browser clients to the private host. The web service publishes events to the Reverb service's private hostname and listener port over HTTP.
 
 After setting Reverb variables, redeploy both services. In browser developer tools, verify a WSS connection to the public WebSocket host, successful authenticated `POST /broadcasting/auth`, and incoming `pharmacist.message.created` events on a `private-pharmacist.conversations.*` channel using two authorized accounts. Also verify an unrelated account receives 403 at channel authorization. Until this two-sided check succeeds, the UI continues polling and must be reported as fallback mode.
 
-Railway's current Dockerfile deployment uses the image entrypoint by default; an explicit service start command replaces it. The Reverb service can use the image's `ABX_PROCESS=websocket` selection, or the equivalent shell-wrapped command `php artisan reverb:start --host=0.0.0.0 --port=$PORT`. The app image and Reverb service must run the same code and credentials. Railway private hostnames are reachable only between services in the same project/environment; browsers must use the public domain. See [Railway start commands](https://docs.railway.com/deployments/start-command), [Railway private networking](https://docs.railway.com/networking/private-networking), and [Laravel Reverb production configuration](https://laravel.com/docs/12.x/reverb).
+Leave the service start command unset so the image entrypoint selects the process. Setting `ABX_PROCESS=websocket` selects Reverb; an explicit command replaces the entrypoint and must bind to `$PORT`. The pre-deploy command checks `ABX_PROCESS` and skips migrations/seeding for this service. The app image and Reverb service must use matching Reverb app credentials. Railway private hostnames are reachable only between services in the same project/environment; browsers must use the public domain. See [Railway start commands](https://docs.railway.com/deployments/start-command), [Railway private networking](https://docs.railway.com/networking/private-networking), and [Laravel Reverb production configuration](https://laravel.com/docs/12.x/reverb).
 
 ## Safe rollout
 
