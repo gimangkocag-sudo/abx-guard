@@ -81,11 +81,16 @@ export default function Dashboard({ auth = {}, challenge = {}, progress = {}, my
 
                     <Card className="flex h-full min-h-52 flex-col">
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">AMR Challenge</p>
-                            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">{safeChallenge.best ? `Skor terbaik ${safeChallenge.best.score}/${safeChallenge.best.total}` : 'Belum dicoba'}</h2>
-                            {safeChallenge.attempts > 0 && <p className="mt-2 text-sm leading-6 text-slate-600">{safeChallenge.attempts} kali percobaan</p>}
+                            <p className="text-xs font-semibold uppercase tracking-wider text-teal-800">Kuis edukasi</p>
+                            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-900">MITOS/FAKTA</h2>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                {safeMythFact.latest
+                                    ? `Sudah dicoba · Skor terbaru ${safeMythFact.latest.score}/${safeMythFact.latest.total}`
+                                    : 'Belum dicoba'}
+                            </p>
+                            {safeMythFact.attempts > 0 && <p className="mt-1 text-sm leading-6 text-slate-600">{safeMythFact.attempts} kali percobaan</p>}
                         </div>
-                        <div className="mt-auto pt-5"><Button href="/amr-challenge" className="w-full">{safeChallenge.attempts > 0 ? 'Coba lagi' : 'Mulai challenge'}</Button></div>
+                        <div className="mt-auto pt-5"><Button href="/belajar/myth-or-fact" className="w-full">{safeMythFact.attempts > 0 ? 'Coba lagi' : 'Mulai kuis'}</Button></div>
                     </Card>
 
                     <Card className="flex h-full min-h-52 flex-col">
