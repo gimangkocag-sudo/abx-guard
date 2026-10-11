@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\Channels\EmailJsChannel;
 use App\Notifications\PharmacistNewMessageNotification;
 use App\Services\EmailJsClient;
+use App\Services\EmailJsDeliveryException;
 use App\Services\PharmacistConnectService;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -352,6 +353,33 @@ class PharmacistConnectTest extends TestCase
 
         $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id]);
         $this->assertSame('Pesan tetap tersimpan', $message->fresh()->body);
+    }
+
+    public function test_emailjs_error_preserves_status_and_redacts_private_values_and_emails(): void
+    {
+        config([
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
+        ]);
+        Http::fake([
+            'https://api.emailjs.com/api/v1.0/email/send' => Http::response([
+                'error' => 'Template rejected for geniastra46@gmail.com using private-test',
+            ], 403),
+        ]);
+
+        try {
+            app(EmailJsClient::class)->send('staff@example.test', ['app_name' => 'ABX Guard']);
+            $this->fail('Expected the EmailJS API rejection to be reported.');
+        } catch (EmailJsDeliveryException $exception) {
+            $this->assertSame(403, $exception->statusCode);
+            $this->assertStringContainsString('Template rejected', $exception->providerMessage);
+            $this->assertStringNotContainsString('private-test', $exception->providerMessage);
+            $this->assertStringNotContainsString('geniastra46@gmail.com', $exception->providerMessage);
+            $this->assertStringContainsString('[redacted]', $exception->providerMessage);
+            $this->assertStringContainsString('[email redacted]', $exception->providerMessage);
+        }
     }
 
     public function test_nonoperational_service_does_not_notify_active_staff(): void
