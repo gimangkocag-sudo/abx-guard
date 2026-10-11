@@ -100,8 +100,8 @@ class PharmacistConnectService
             return;
         }
 
-        if (! $this->hasDeliveryMailTransport(config('mail.default'))) {
-            Log::notice('Pharmacist Connect email notification skipped because no delivery mail transport is configured.');
+        if (! app(EmailJsClient::class)->isConfigured()) {
+            Log::notice('Pharmacist Connect email notification skipped because EmailJS is not configured.');
 
             return;
         }
@@ -116,6 +116,11 @@ class PharmacistConnectService
 
         foreach ($recipients as $staff) {
             try {
+                if ($staff !== $recipients->first()) {
+                    // EmailJS documents a one-request-per-second REST API limit.
+                    usleep(1_000_000);
+                }
+
                 Notification::send($staff, $notification);
             } catch (\Throwable $exception) {
                 // Do not log addresses, message bodies, conversation data, or provider details.
@@ -126,35 +131,6 @@ class PharmacistConnectService
                 ]);
             }
         }
-    }
-
-    private function hasDeliveryMailTransport(?string $mailer): bool
-    {
-        if (! $mailer) {
-            return false;
-        }
-
-        $mailerConfig = config("mail.mailers.{$mailer}", []);
-        $transport = $mailerConfig['transport'] ?? $mailer;
-
-        if ($transport === 'failover') {
-            foreach ($mailerConfig['mailers'] ?? [] as $fallbackMailer) {
-                if ($this->hasDeliveryMailTransport($fallbackMailer)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        if (in_array($transport, ['log', 'array', 'null'], true)) {
-            return false;
-        }
-
-        $fromAddress = (string) config('mail.from.address', '');
-
-        return filter_var($fromAddress, FILTER_VALIDATE_EMAIL) !== false
-            && ! str_ends_with(strtolower($fromAddress), '@example.com');
     }
 
     public function serializeMessage(PharmacistMessage $message, int $viewerId): array

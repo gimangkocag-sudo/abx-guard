@@ -6,12 +6,15 @@ use App\Events\PharmacistMessageCreated;
 use App\Models\PharmacistConversation;
 use App\Models\PharmacistStaff;
 use App\Models\User;
+use App\Notifications\Channels\EmailJsChannel;
 use App\Notifications\PharmacistNewMessageNotification;
+use App\Services\EmailJsClient;
 use App\Services\PharmacistConnectService;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -190,7 +193,10 @@ class PharmacistConnectTest extends TestCase
     {
         $this->enableService();
         config([
-            'mail.default' => 'smtp',
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
             'mail.from.address' => 'notifications@abxguard.test',
             'app.url' => 'https://abx-guard-staging.up.railway.app',
         ]);
@@ -226,7 +232,11 @@ class PharmacistConnectTest extends TestCase
             $this->assertSame('https://abx-guard-staging.up.railway.app/pharmacist/inbox', $mail->actionUrl);
             $this->assertStringNotContainsString($privateBody, $mailText);
 
-            $this->assertSame(['mail'], $channels);
+            $this->assertSame([EmailJsChannel::class], $channels);
+            $this->assertSame([
+                'inbox_url' => 'https://abx-guard-staging.up.railway.app/pharmacist/inbox',
+                'app_name' => 'ABX Guard',
+            ], $notification->toEmailJs($activeStaff));
 
             return true;
         });
@@ -242,7 +252,7 @@ class PharmacistConnectTest extends TestCase
     public function test_staff_reply_does_not_send_an_incoming_message_notification(): void
     {
         $this->enableService();
-        config(['mail.default' => 'smtp', 'mail.from.address' => 'notifications@abxguard.test']);
+        config(['services.emailjs.service_id' => 'service-test', 'services.emailjs.template_id' => 'template-test', 'services.emailjs.public_key' => 'public-test', 'services.emailjs.private_key' => 'private-test']);
         Notification::fake();
 
         $staff = $this->staff();
@@ -262,7 +272,7 @@ class PharmacistConnectTest extends TestCase
     public function test_mail_delivery_failure_does_not_undo_a_persisted_chat_message(): void
     {
         $this->enableService();
-        config(['mail.default' => 'smtp', 'mail.from.address' => 'notifications@abxguard.test']);
+        config(['services.emailjs.service_id' => 'service-test', 'services.emailjs.template_id' => 'template-test', 'services.emailjs.public_key' => 'public-test', 'services.emailjs.private_key' => 'private-test']);
         $staff = $this->staff();
         $owner = User::factory()->create();
         $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
@@ -291,6 +301,57 @@ class PharmacistConnectTest extends TestCase
 
         $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id]);
         Notification::assertNothingSent();
+    }
+
+    public function test_emailjs_rest_request_uses_server_credentials_and_never_includes_chat_content(): void
+    {
+        config([
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
+        ]);
+        Http::fake([
+            'https://api.emailjs.com/api/v1.0/email/send' => Http::response('OK', 200),
+        ]);
+
+        app(EmailJsClient::class)->send('staff@example.test', [
+            'inbox_url' => 'https://abx-guard-staging.up.railway.app/pharmacist/inbox',
+            'app_name' => 'ABX Guard',
+        ]);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.emailjs.com/api/v1.0/email/send'
+                && $request['service_id'] === 'service-test'
+                && $request['template_id'] === 'template-test'
+                && $request['user_id'] === 'public-test'
+                && $request['accessToken'] === 'private-test'
+                && $request['template_params']['to_email'] === 'staff@example.test'
+                && ! array_key_exists('message', $request['template_params'])
+                && ! array_key_exists('body', $request['template_params']);
+        });
+    }
+
+    public function test_emailjs_provider_failure_does_not_expose_response_or_undo_message(): void
+    {
+        $this->enableService();
+        config([
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
+        ]);
+        Http::fake([
+            'https://api.emailjs.com/api/v1.0/email/send' => Http::response('provider details with private data', 403),
+        ]);
+        $this->staff();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+
+        $message = app(PharmacistConnectService::class)->send($conversation, $owner, 'Pesan tetap tersimpan');
+
+        $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id]);
+        $this->assertSame('Pesan tetap tersimpan', $message->fresh()->body);
     }
 
     public function test_nonoperational_service_does_not_notify_active_staff(): void
