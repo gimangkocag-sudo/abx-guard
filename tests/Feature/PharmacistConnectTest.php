@@ -298,11 +298,68 @@ class PharmacistConnectTest extends TestCase
             && ! str_contains(json_encode($request->data()), $privateBody));
     }
 
+    public function test_message_endpoint_sends_emailjs_only_to_active_staff_after_message_commit(): void
+    {
+        $this->enableService();
+        config([
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
+            'app.url' => 'https://abx-guard-staging.up.railway.app',
+        ]);
+
+        $activeStaff = $this->staff();
+        $inactiveStaff = $this->staff();
+        $inactiveStaff->pharmacistStaffMembership()->update(['active' => false]);
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+        $privateBody = 'Private message that must never be sent to EmailJS';
+        $apiSawCommittedMessage = false;
+
+        Http::fake([
+            'https://api.emailjs.com/api/v1.0/email/send' => function ($request) use ($conversation, $owner, $privateBody, &$apiSawCommittedMessage) {
+                $storedMessage = PharmacistMessage::query()
+                    ->where('conversation_id', $conversation->id)
+                    ->where('sender_id', $owner->id)
+                    ->first();
+                $apiSawCommittedMessage = $storedMessage !== null && $storedMessage->body === $privateBody;
+
+                return Http::response('OK', 200);
+            },
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->postJson("/pharmacist-connect/conversations/{$conversation->id}/messages", ['body' => $privateBody]);
+
+        $response->assertCreated()->assertJsonPath('message.body', $privateBody);
+        $this->assertTrue($apiSawCommittedMessage, 'EmailJS must be called only after the message transaction commits.');
+        $this->assertDatabaseHas('pharmacist_messages', [
+            'conversation_id' => $conversation->id,
+            'sender_id' => $owner->id,
+        ]);
+        $this->assertSame($privateBody, PharmacistMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('sender_id', $owner->id)
+            ->firstOrFail()
+            ->body);
+        Http::assertSentCount(1);
+        Http::assertSent(function ($request) use ($activeStaff, $inactiveStaff, $privateBody) {
+            $data = $request->data();
+
+            return $request['template_params']['to_email'] === $activeStaff->email
+                && $request['template_params']['app_name'] === 'ABX Guard'
+                && $request['template_params']['inbox_url'] === 'https://abx-guard-staging.up.railway.app/pharmacist/inbox'
+                && ! str_contains(json_encode($data), $privateBody)
+                && ! str_contains(json_encode($data), $inactiveStaff->email);
+        });
+    }
+
     public function test_staff_reply_does_not_send_an_incoming_message_notification(): void
     {
         $this->enableService();
         config(['services.emailjs.service_id' => 'service-test', 'services.emailjs.template_id' => 'template-test', 'services.emailjs.public_key' => 'public-test', 'services.emailjs.private_key' => 'private-test']);
-        Notification::fake();
+        Http::fake(['https://api.emailjs.com/api/v1.0/email/send' => Http::response('OK', 200)]);
 
         $staff = $this->staff();
         $owner = User::factory()->create();
@@ -315,7 +372,7 @@ class PharmacistConnectTest extends TestCase
             ->postJson("/pharmacist/inbox/conversations/{$conversation->id}/messages", ['body' => 'Balasan staf'])
             ->assertCreated();
 
-        Notification::assertNothingSent();
+        Http::assertNothingSent();
     }
 
     public function test_mail_delivery_failure_does_not_undo_a_persisted_chat_message(): void
@@ -400,10 +457,18 @@ class PharmacistConnectTest extends TestCase
         $owner = User::factory()->create();
         $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
 
-        $message = app(PharmacistConnectService::class)->send($conversation, $owner, 'Pesan tetap tersimpan');
+        $response = $this->actingAs($owner)
+            ->postJson("/pharmacist-connect/conversations/{$conversation->id}/messages", ['body' => 'Pesan tetap tersimpan'])
+            ->assertCreated()
+            ->assertJsonPath('message.body', 'Pesan tetap tersimpan');
+        $messageId = $response->json('message.id');
 
-        $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id]);
-        $this->assertSame('Pesan tetap tersimpan', $message->fresh()->body);
+        $this->assertDatabaseHas('pharmacist_messages', [
+            'id' => $messageId,
+            'conversation_id' => $conversation->id,
+            'sender_id' => $owner->id,
+        ]);
+        $this->assertSame('Pesan tetap tersimpan', PharmacistMessage::findOrFail($messageId)->body);
         Http::assertSentCount(1);
         Log::shouldHaveReceived('warning')->once()->withArgs(fn ($text, $context) => $text === 'Pharmacist Connect email notification delivery failed.'
             && ($context['failure_category'] ?? null) === 'provider_http_response'
