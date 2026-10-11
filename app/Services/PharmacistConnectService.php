@@ -131,13 +131,41 @@ class PharmacistConnectService
                 ];
 
                 if ($exception instanceof EmailJsDeliveryException) {
+                    $context['failure_category'] = 'provider_http_response';
+                    $context['request_attempted'] = true;
                     $context['http_status'] = $exception->statusCode;
                     $context['provider_message'] = $exception->providerMessage;
+                } elseif ($exception instanceof EmailJsTransportException) {
+                    $context['failure_category'] = $exception->failureCategory;
+                    $context['request_attempted'] = true;
+                    $context['http_response_received'] = false;
+                    $context['transport_exception'] = $exception->sourceExceptionClass;
+                } elseif ($exception instanceof EmailJsRequestException) {
+                    $context['failure_category'] = 'http_client_exception';
+                    $context['request_attempted'] = true;
+                    $context['http_response_received'] = false;
+                    $context['client_exception'] = $exception->sourceExceptionClass;
+                } else {
+                    $context['failure_category'] = $this->applicationFailureCategory($exception);
                 }
 
                 Log::warning('Pharmacist Connect email notification delivery failed.', $context);
             }
         }
+    }
+
+    private function applicationFailureCategory(\Throwable $exception): string
+    {
+        $message = strtolower($exception->getMessage());
+
+        return match (true) {
+            str_contains($message, 'emailjs is not configured') => 'emailjs_configuration_missing',
+            str_contains($message, 'driver [') && str_contains($message, 'not supported'),
+            str_contains($message, 'not instantiable') => 'notification_channel_resolution',
+            str_contains($message, 'invalid uri'),
+            str_contains($message, 'malformed url') => 'http_request_setup',
+            default => 'application_exception',
+        };
     }
 
     public function serializeMessage(PharmacistMessage $message, int $viewerId): array

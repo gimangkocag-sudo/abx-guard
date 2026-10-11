@@ -15,7 +15,8 @@ class EmailJsChannel
             return;
         }
 
-        $recipient = $notifiable->routeNotificationFor('email', $notification);
+        // Laravel's built-in email address routing key is `mail`; `email` returns null.
+        $recipient = $notifiable->routeNotificationFor('mail', $notification);
         if (! is_string($recipient) || filter_var($recipient, FILTER_VALIDATE_EMAIL) === false) {
             return;
         }
