@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\SurveyResponseController as AdminSurveyResponseCo
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\LearnController;
+use App\Http\Controllers\MythFactAttemptController;
 use App\Http\Controllers\PharmacistConnectController;
 use App\Http\Middleware\EnsurePharmacistStaff;
 use App\Http\Controllers\ResearchSurveyController;
@@ -24,6 +25,10 @@ Route::get('/belajar/{module}', [LearnController::class, 'show'])->name('learn.s
 
 // Butuh login
 Route::middleware('auth')->group(function () {
+    Route::post('/belajar/myth-or-fact/attempts', [MythFactAttemptController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('myth-fact.attempts.store');
+
     Route::get('/pharmacist-connect/conversations', [PharmacistConnectController::class, 'index'])->name('pharmacist.conversations.index');
     Route::post('/pharmacist-connect/conversations', [PharmacistConnectController::class, 'store'])->middleware('throttle:5,1')->name('pharmacist.conversations.store');
     Route::get('/pharmacist-connect/conversations/{conversation}', [PharmacistConnectController::class, 'show'])->can('view', 'conversation')->name('pharmacist.conversations.show');

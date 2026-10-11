@@ -64,6 +64,11 @@ class User extends Authenticatable
         return $this->hasMany(PharmacistConversation::class, 'assigned_staff_id');
     }
 
+    public function mythFactAttempts(): HasMany
+    {
+        return $this->hasMany(MythFactAttempt::class);
+    }
+
     public function isActivePharmacistStaff(): bool
     {
         return $this->pharmacistStaffMembership()->where('active', true)->exists();

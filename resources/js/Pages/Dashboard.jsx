@@ -17,10 +17,11 @@ function ModuleStatus({ visited }) {
     );
 }
 
-export default function Dashboard({ auth = {}, challenge = {}, progress = {}, researchSurvey = {} }) {
+export default function Dashboard({ auth = {}, challenge = {}, progress = {}, mythFact = {}, researchSurvey = {} }) {
     const safeProgress = { done: 0, total: 0, percent: 0, modules: [], continue: null, ...(progress ?? {}) };
     safeProgress.modules = Array.isArray(safeProgress.modules) ? safeProgress.modules : [];
     const safeChallenge = { best: null, attempts: 0, lastAttemptId: null, ...(challenge ?? {}) };
+    const safeMythFact = { attempts: 0, latest: null, ...(mythFact ?? {}) };
     const isAdmin = auth?.user?.role === 'admin';
     return (
         <AbxLayout>
@@ -43,15 +44,21 @@ export default function Dashboard({ auth = {}, challenge = {}, progress = {}, re
                     </div>
                     <ProgressBar className="mt-4" value={safeProgress.done} max={Math.max(safeProgress.total, 1)} label="Progress belajar" />
                     <ul className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                        {safeProgress.modules.map((m) => (
-                            <li key={m.slug}>
-                                <Link href={`/belajar/${m.slug}`} className="group flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:border-teal-200 hover:bg-teal-50/60 hover:text-teal-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">
-                                    <ModuleStatus visited={m.visited} />
-                                    <span className="min-w-0 break-words leading-5">{m.title}</span>
-                                    <span className="sr-only">{m.visited ? '(sudah dibuka)' : '(belum dibuka)'}</span>
-                                </Link>
-                            </li>
-                        ))}
+                        {safeProgress.modules.map((m) => {
+                            const isMythFact = m.slug === 'myth-or-fact';
+                            const latest = safeMythFact.latest;
+                            const status = latest ? `Sudah dicoba · Nilai terbaru ${latest.score}/${latest.total}` : 'Belum dicoba';
+
+                            return (
+                                <li key={m.slug}>
+                                    <Link href={`/belajar/${m.slug}`} className="group flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:border-teal-200 hover:bg-teal-50/60 hover:text-teal-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">
+                                        <ModuleStatus visited={isMythFact ? Boolean(latest) : m.visited} />
+                                        <span className="min-w-0 break-words leading-5">{isMythFact ? 'MITOS/FAKTA' : m.title}{isMythFact && <span className="mt-0.5 block text-xs font-normal text-slate-500">{status}</span>}</span>
+                                        <span className="sr-only">{isMythFact ? `(${status})` : m.visited ? '(sudah dibuka)' : '(belum dibuka)'}</span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
                     </ul>
                     <div className="mt-4 border-t border-slate-100 pt-4">
                         {safeProgress.continue ? (
