@@ -62,6 +62,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('/users', [AdminUserController::class, 'index'])->name('users');
+    Route::put('/users/{user}/pharmacist-staff', [AdminUserController::class, 'grantPharmacistStaff'])->name('users.pharmacist-staff.grant');
+    Route::delete('/users/{user}/pharmacist-staff', [AdminUserController::class, 'revokePharmacistStaff'])->name('users.pharmacist-staff.revoke');
     Route::get('/survey', [AdminSurveyResponseController::class, 'index'])->name('survey.index');
     Route::get('/survey/{submission}', [AdminSurveyResponseController::class, 'show'])->name('survey.show');
     Route::get('/statistics', AdminStatisticsController::class)->name('statistics');

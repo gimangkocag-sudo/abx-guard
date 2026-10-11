@@ -35,6 +35,11 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'canAccessPharmacistInbox' => fn () => (bool) $request->user()?->isActivePharmacistStaff(),
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
         ];
     }
 }

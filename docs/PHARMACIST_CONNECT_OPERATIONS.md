@@ -18,6 +18,10 @@ php artisan pharmacist:staff staff@example.org --revoke
 
 This command can grant access to a user or admin account, but neither role gets access implicitly. Do not run the grant command until the person's pharmacist credentials and operational assignment have been verified outside the application. No staff permission is seeded. Revoking a staff member returns all of their assigned conversations to the authorized staff queue without deleting messages.
 
+Admins can also grant or revoke inbox membership on `/admin/users`. The page exposes controls only for accounts with the `user` role; existing admin accounts and roles are not changed through these controls. Each actual state transition is recorded in the additive `pharmacist_staff_audits` table with the acting admin ID, target user ID, action, prior/new membership state, and timestamp. The audit table has no account foreign keys so its numeric actor and target IDs remain available if a user is later removed. Audit rows are not editable through the application.
+
+If the last active staff membership is revoked while the environment gate is configured on, `PharmacistConnectService::isOperational()` returns false because it also requires an active staff member. The admin page warns that public intake is effectively unavailable; the Railway environment variable itself is not changed by the application.
+
 ## Data and privacy
 
 `pharmacist_conversations`, `pharmacist_messages`, and `pharmacist_staff` are additive tables. The migration does not modify survey tables or existing records. Message bodies use Laravel's encrypted Eloquent cast and require the existing `APP_KEY` to remain available and stable; the raw message body is not written to application logs. Do not rotate `APP_KEY` without a separately tested key-rotation plan. There is no automated transcript deletion until a retention policy is approved. The migration intentionally refuses automatic rollback because dropping these tables would erase consultation history.
