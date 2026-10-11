@@ -12,6 +12,7 @@
         "laravel/reverb": "^1.12",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "resend/resend-php": "^1.0",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
