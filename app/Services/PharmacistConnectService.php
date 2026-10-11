@@ -123,12 +123,19 @@ class PharmacistConnectService
 
                 Notification::send($staff, $notification);
             } catch (\Throwable $exception) {
-                // Do not log addresses, message bodies, conversation data, or provider details.
-                Log::warning('Pharmacist Connect email notification delivery failed.', [
+                // Log only the provider's already-sanitized diagnostic fields when available.
+                $context = [
                     'message_id' => $message->id,
                     'staff_user_id' => $staff->id,
                     'exception' => $exception::class,
-                ]);
+                ];
+
+                if ($exception instanceof EmailJsDeliveryException) {
+                    $context['http_status'] = $exception->statusCode;
+                    $context['provider_message'] = $exception->providerMessage;
+                }
+
+                Log::warning('Pharmacist Connect email notification delivery failed.', $context);
             }
         }
     }
