@@ -74,7 +74,7 @@ export default function AdminLayout({ title, actions, children }) {
                     </div>
                     {open && <nav id="admin-mobile-nav" aria-label="Navigasi admin (mobile)" className="max-h-[80dvh] overflow-y-auto border-t border-teal-900 bg-teal-950 p-3 lg:hidden">{links}</nav>}
                 </header>
-                <main id="admin-main" className="flex-1 p-4 sm:p-6">
+                <main id="admin-main" className="min-w-0 flex-1 p-4 sm:p-6">
                     {actions && <div className="mb-4 flex flex-wrap gap-2">{actions}</div>}
                     {children}
                 </main>

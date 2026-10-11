@@ -20,11 +20,11 @@ export default function Dashboard({ stats, activeInstrument, submissionsPerDay, 
             </div>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="c1">
+                <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="c1">
                     <h2 id="c1" className="font-bold">Submission survei penelitian per hari (14 hari terakhir)</h2>
                     <div className="mt-4">{hasDaily ? <BarChart data={submissionsPerDay} label="Submission survei penelitian per hari" /> : <EmptyState title="Belum ada submission dalam 14 hari terakhir" />}</div>
                 </section>
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="c2">
+                <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-labelledby="c2">
                     <div className="flex items-start justify-between gap-2">
                         <h2 id="c2" className="font-bold">Distribusi skor AMR Challenge</h2>
                         <Link href="/admin/challenge" className="text-sm font-medium text-teal-700 underline">Detail</Link>
