@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Events\PharmacistMessageCreated;
 use App\Models\PharmacistConversation;
+use App\Models\PharmacistMessage;
 use App\Models\PharmacistStaff;
 use App\Models\User;
 use App\Notifications\Channels\EmailJsChannel;
@@ -13,9 +14,11 @@ use App\Services\EmailJsDeliveryException;
 use App\Services\PharmacistConnectService;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -250,6 +253,51 @@ class PharmacistConnectTest extends TestCase
         Notification::assertNotSentTo($owner, PharmacistNewMessageNotification::class);
     }
 
+    public function test_chat_message_is_persisted_before_emailjs_request_and_only_active_staff_is_notified(): void
+    {
+        $this->enableService();
+        config([
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
+            'app.url' => 'https://abx-guard-staging.up.railway.app',
+        ]);
+        Http::fake(['https://api.emailjs.com/api/v1.0/email/send' => Http::response('OK', 200)]);
+
+        $activeStaff = $this->staff();
+        $inactiveStaff = $this->staff();
+        $inactiveStaff->pharmacistStaffMembership()->update(['active' => false]);
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+        $privateBody = 'Private QA message body';
+        $requestSawPersistedMessage = false;
+
+        $this->assertTrue(app(EmailJsClient::class)->isConfigured());
+        $this->assertTrue(app(PharmacistConnectService::class)->isOperational());
+
+        Http::globalRequestMiddleware(function ($request) use ($conversation, $owner, $privateBody, &$requestSawPersistedMessage) {
+            $stored = PharmacistMessage::query()
+                ->where('conversation_id', $conversation->id)
+                ->where('sender_id', $owner->id)
+                ->first();
+
+            $requestSawPersistedMessage = $stored !== null && $stored->body === $privateBody;
+
+            return $request;
+        });
+
+        $message = app(PharmacistConnectService::class)->send($conversation, $owner, $privateBody);
+
+        $this->assertTrue($requestSawPersistedMessage, 'EmailJS should only be called after the message transaction commits.');
+        $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id, 'conversation_id' => $conversation->id]);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request['template_params']['to_email'] === $activeStaff->email
+            && $request['template_params']['app_name'] === 'ABX Guard'
+            && $request['template_params']['inbox_url'] === 'https://abx-guard-staging.up.railway.app/pharmacist/inbox'
+            && ! str_contains(json_encode($request->data()), $privateBody));
+    }
+
     public function test_staff_reply_does_not_send_an_incoming_message_notification(): void
     {
         $this->enableService();
@@ -343,8 +391,11 @@ class PharmacistConnectTest extends TestCase
             'services.emailjs.private_key' => 'private-test',
         ]);
         Http::fake([
-            'https://api.emailjs.com/api/v1.0/email/send' => Http::response('provider details with private data', 403),
+            'https://api.emailjs.com/api/v1.0/email/send' => Http::response([
+                'error' => 'Rejected private-test for qa-recipient@example.test',
+            ], 403),
         ]);
+        Log::spy();
         $this->staff();
         $owner = User::factory()->create();
         $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
@@ -353,6 +404,47 @@ class PharmacistConnectTest extends TestCase
 
         $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id]);
         $this->assertSame('Pesan tetap tersimpan', $message->fresh()->body);
+        Http::assertSentCount(1);
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($text, $context) => $text === 'Pharmacist Connect email notification delivery failed.'
+            && ($context['failure_category'] ?? null) === 'provider_http_response'
+            && ($context['http_status'] ?? null) === 403
+            && str_contains($context['provider_message'] ?? '', '[redacted]')
+            && str_contains($context['provider_message'] ?? '', '[email redacted]')
+            && ! str_contains(json_encode($context), 'private-test')
+            && ! str_contains(json_encode($context), 'qa-recipient@example.test'));
+    }
+
+    public function test_emailjs_transport_failure_is_classified_without_raw_error_and_chat_stays_persisted(): void
+    {
+        $this->enableService();
+        config([
+            'services.emailjs.service_id' => 'service-test',
+            'services.emailjs.template_id' => 'template-test',
+            'services.emailjs.public_key' => 'public-test',
+            'services.emailjs.private_key' => 'private-test',
+        ]);
+        Http::fake([
+            'https://api.emailjs.com/api/v1.0/email/send' => fn () => throw new ConnectionException('cURL error 6: Could not resolve host: api.emailjs.com private-test'),
+        ]);
+        Log::spy();
+
+        $this->staff();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+
+        $message = app(PharmacistConnectService::class)->send($conversation, $owner, 'Persisted despite DNS failure');
+
+        $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id, 'conversation_id' => $conversation->id]);
+        $this->assertSame('Persisted despite DNS failure', $message->fresh()->body);
+        Log::shouldHaveReceived('warning')->once()->with(
+            'Pharmacist Connect email notification delivery failed.',
+            \Mockery::on(fn (array $context) => ($context['failure_category'] ?? null) === 'dns_resolution'
+                && ($context['request_attempted'] ?? false) === true
+                && ($context['http_response_received'] ?? true) === false
+                && ($context['transport_exception'] ?? null) === ConnectionException::class
+                && ! array_key_exists('http_status', $context)
+                && ! str_contains(json_encode($context), 'private-test')),
+        );
     }
 
     public function test_emailjs_error_preserves_status_and_redacts_private_values_and_emails(): void
