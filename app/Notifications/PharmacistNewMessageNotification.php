@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Channels\EmailJsChannel;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -11,7 +12,16 @@ class PharmacistNewMessageNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return [EmailJsChannel::class];
+    }
+
+    /** @return array<string, string> */
+    public function toEmailJs(object $notifiable): array
+    {
+        return [
+            'inbox_url' => $this->inboxUrl,
+            'app_name' => 'ABX Guard',
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage
