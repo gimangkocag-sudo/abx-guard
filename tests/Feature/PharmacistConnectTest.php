@@ -6,10 +6,13 @@ use App\Events\PharmacistMessageCreated;
 use App\Models\PharmacistConversation;
 use App\Models\PharmacistStaff;
 use App\Models\User;
+use App\Notifications\PharmacistNewMessageNotification;
+use App\Services\PharmacistConnectService;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class PharmacistConnectTest extends TestCase
@@ -181,6 +184,130 @@ class PharmacistConnectTest extends TestCase
         $response->assertCreated()->assertJsonPath('realtime', false);
         $this->getJson("/pharmacist-connect/conversations/{$conversation->id}")
             ->assertOk()->assertJsonPath('messages.0.body', 'Pesan melalui fallback');
+    }
+
+    public function test_new_user_message_notifies_only_active_staff_without_message_content(): void
+    {
+        $this->enableService();
+        config([
+            'mail.default' => 'smtp',
+            'mail.from.address' => 'notifications@abxguard.test',
+            'app.url' => 'https://abx-guard-staging.up.railway.app',
+        ]);
+        Notification::fake();
+
+        $activeStaff = $this->staff();
+        $anotherActiveStaff = $this->staff();
+        $inactiveStaff = $this->staff();
+        $inactiveStaff->pharmacistStaffMembership()->update(['active' => false]);
+        $invalidAddressStaff = User::factory()->create();
+        $invalidAddressStaff->forceFill(['email' => 'not-an-email'])->save();
+        PharmacistStaff::create(['user_id' => $invalidAddressStaff->id, 'active' => true]);
+        $adminWithoutInbox = User::factory()->create();
+        $adminWithoutInbox->forceFill(['role' => 'admin'])->save();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+        $privateBody = 'Informasi kesehatan yang tidak boleh masuk ke email.';
+
+        $this->assertSame('user', $owner->fresh()->role);
+        $this->assertFalse($owner->isActivePharmacistStaff());
+        $this->assertTrue(app(PharmacistConnectService::class)->isOperational());
+
+        $this->actingAs($owner)
+            ->postJson("/pharmacist-connect/conversations/{$conversation->id}/messages", ['body' => $privateBody])
+            ->assertCreated();
+
+        Notification::assertSentTo($activeStaff, PharmacistNewMessageNotification::class, function ($notification, array $channels) use ($activeStaff, $privateBody) {
+            $mail = $notification->toMail($activeStaff);
+            $mailText = implode(' ', [...$mail->introLines, ...$mail->outroLines]);
+
+            $this->assertSame('Pesan baru di Pharmacist Connect — ABX Guard', $mail->subject);
+            $this->assertSame('Buka Inbox ABX Guard', $mail->actionText);
+            $this->assertSame('https://abx-guard-staging.up.railway.app/pharmacist/inbox', $mail->actionUrl);
+            $this->assertStringNotContainsString($privateBody, $mailText);
+
+            $this->assertSame(['mail'], $channels);
+
+            return true;
+        });
+        Notification::assertSentTo($anotherActiveStaff, PharmacistNewMessageNotification::class);
+        Notification::assertSentToTimes($activeStaff, PharmacistNewMessageNotification::class, 1);
+        Notification::assertSentToTimes($anotherActiveStaff, PharmacistNewMessageNotification::class, 1);
+        Notification::assertNotSentTo($inactiveStaff, PharmacistNewMessageNotification::class);
+        Notification::assertNotSentTo($invalidAddressStaff, PharmacistNewMessageNotification::class);
+        Notification::assertNotSentTo($adminWithoutInbox, PharmacistNewMessageNotification::class);
+        Notification::assertNotSentTo($owner, PharmacistNewMessageNotification::class);
+    }
+
+    public function test_staff_reply_does_not_send_an_incoming_message_notification(): void
+    {
+        $this->enableService();
+        config(['mail.default' => 'smtp', 'mail.from.address' => 'notifications@abxguard.test']);
+        Notification::fake();
+
+        $staff = $this->staff();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create([
+            'status' => PharmacistConversation::STATUS_OPEN,
+            'assigned_staff_id' => $staff->id,
+        ]);
+
+        $this->actingAs($staff)
+            ->postJson("/pharmacist/inbox/conversations/{$conversation->id}/messages", ['body' => 'Balasan staf'])
+            ->assertCreated();
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_mail_delivery_failure_does_not_undo_a_persisted_chat_message(): void
+    {
+        $this->enableService();
+        config(['mail.default' => 'smtp', 'mail.from.address' => 'notifications@abxguard.test']);
+        $staff = $this->staff();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+        Notification::shouldReceive('send')->once()->andThrow(new \RuntimeException('mail provider failure'));
+
+        $message = app(PharmacistConnectService::class)->send($conversation, $owner, 'Tetap tersimpan');
+
+        $this->assertDatabaseHas('pharmacist_messages', [
+            'id' => $message->id,
+            'conversation_id' => $conversation->id,
+            'sender_id' => $owner->id,
+        ]);
+        $this->assertSame('Tetap tersimpan', $message->fresh()->body);
+    }
+
+    public function test_non_delivery_mailer_skips_email_and_keeps_chat_persisted(): void
+    {
+        $this->enableService();
+        config(['mail.default' => 'log']);
+        Notification::fake();
+        $this->staff();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+
+        $message = app(PharmacistConnectService::class)->send($conversation, $owner, 'Pesan aman');
+
+        $this->assertDatabaseHas('pharmacist_messages', ['id' => $message->id]);
+        Notification::assertNothingSent();
+    }
+
+    public function test_nonoperational_service_does_not_notify_active_staff(): void
+    {
+        config([
+            'abx.pharmacist_connect.operational' => false,
+            'mail.default' => 'smtp',
+            'mail.from.address' => 'notifications@abxguard.test',
+        ]);
+        Notification::fake();
+        $this->staff();
+        $owner = User::factory()->create();
+        $conversation = $owner->pharmacistConversations()->create(['status' => PharmacistConversation::STATUS_OPEN]);
+
+        app(PharmacistConnectService::class)->send($conversation, $owner, 'Pesan saat layanan mati');
+
+        Notification::assertNothingSent();
     }
 
     public function test_realtime_events_use_a_private_conversation_channel(): void

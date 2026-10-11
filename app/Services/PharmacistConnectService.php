@@ -6,8 +6,10 @@ use App\Events\PharmacistMessageCreated;
 use App\Models\PharmacistConversation;
 use App\Models\PharmacistMessage;
 use App\Models\User;
+use App\Notifications\PharmacistNewMessageNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class PharmacistConnectService
 {
@@ -79,9 +81,80 @@ class PharmacistConnectService
             ]);
         }
 
+        // Send after the message transaction commits and after realtime publication.
+        // Delivery is synchronous because this deployment has no dedicated queue worker;
+        // mail failure never rolls back chat or delays the initial broadcast.
+        $senderRole = $sender->role ?? $sender->fresh()?->role;
+        if ($senderRole === 'user' && ! $sender->isActivePharmacistStaff()) {
+            $this->notifyActiveStaff($message);
+        }
+
         $message->setAttribute('_realtime_sent', $broadcastSent);
 
         return $message;
+    }
+
+    private function notifyActiveStaff(PharmacistMessage $message): void
+    {
+        if (! $this->isOperational()) {
+            return;
+        }
+
+        if (! $this->hasDeliveryMailTransport(config('mail.default'))) {
+            Log::notice('Pharmacist Connect email notification skipped because no delivery mail transport is configured.');
+
+            return;
+        }
+
+        $inboxUrl = rtrim((string) config('app.url'), '/').'/pharmacist/inbox';
+        $notification = new PharmacistNewMessageNotification($inboxUrl);
+        $recipients = User::query()
+            ->whereHas('pharmacistStaffMembership', fn ($query) => $query->where('active', true))
+            ->whereNotNull('email')
+            ->get(['id', 'email'])
+            ->filter(fn (User $staff) => filter_var($staff->email, FILTER_VALIDATE_EMAIL) !== false);
+
+        foreach ($recipients as $staff) {
+            try {
+                Notification::send($staff, $notification);
+            } catch (\Throwable $exception) {
+                // Do not log addresses, message bodies, conversation data, or provider details.
+                Log::warning('Pharmacist Connect email notification delivery failed.', [
+                    'message_id' => $message->id,
+                    'staff_user_id' => $staff->id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
+    }
+
+    private function hasDeliveryMailTransport(?string $mailer): bool
+    {
+        if (! $mailer) {
+            return false;
+        }
+
+        $mailerConfig = config("mail.mailers.{$mailer}", []);
+        $transport = $mailerConfig['transport'] ?? $mailer;
+
+        if ($transport === 'failover') {
+            foreach ($mailerConfig['mailers'] ?? [] as $fallbackMailer) {
+                if ($this->hasDeliveryMailTransport($fallbackMailer)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (in_array($transport, ['log', 'array', 'null'], true)) {
+            return false;
+        }
+
+        $fromAddress = (string) config('mail.from.address', '');
+
+        return filter_var($fromAddress, FILTER_VALIDATE_EMAIL) !== false
+            && ! str_ends_with(strtolower($fromAddress), '@example.com');
     }
 
     public function serializeMessage(PharmacistMessage $message, int $viewerId): array

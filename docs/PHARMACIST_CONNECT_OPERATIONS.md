@@ -30,6 +30,14 @@ The user may read only conversations they own. Active pharmacist staff can read 
 
 The user page explains that this is not an emergency service, automatic diagnosis, or substitute for in-person care. It does not promise 24/7 coverage or response times. Staff online presence is not yet tracked; the page must not be described as live-staff availability based on an active account alone.
 
+## Staff email notifications
+
+After an incoming message from a non-staff USER has been committed and its realtime event has been attempted, ABX Guard sends a generic email notification to each active `pharmacist_staff` member with a syntactically valid email address. The email contains only a link to `/pharmacist/inbox`; it never contains the conversation text or sender details. Staff replies do not trigger these notifications. The inbox URL is built from `APP_URL` and still requires normal login and staff authorization.
+
+Email delivery is synchronous because the application deployment does not define a dedicated queue worker. There is no queued retry that could resend a notification for the same message. Provider errors are caught and logged with only message/staff numeric IDs and exception class; the already saved message and realtime/polling paths remain available. A mail transport set to `log`, `array`, or `null`, or the default placeholder sender address, is treated as not configured and notifications are skipped. This prevents a successful log write from being mistaken for a delivered email.
+
+To enable actual delivery, configure the mail provider through Railway service variables using the names supported by `config/mail.php`: `MAIL_MAILER`, `MAIL_URL` (if the provider supplies a DSN), `MAIL_SCHEME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_EHLO_DOMAIN`, `MAIL_FROM_ADDRESS`, and `MAIL_FROM_NAME`. Configure only the fields required by the selected provider; never put secrets in Git, `VITE_*`, or QA output. `MAIL_FROM_ADDRESS` must be a real sender address controlled by the service owner. Verify delivery first with an approved staging recipient. No queue worker is required for this synchronous implementation. If asynchronous delivery or automatic retries are introduced later, use an idempotent outbox/job design and provision a worker before changing the dispatch path.
+
 ## Railway configuration
 
 The existing `railway.json` pre-deploy command runs the current web release tasks: `php artisan migrate --force`, followed by `ResearchInstrumentSeeder --force`. The command is guarded by `ABX_PROCESS`: it defaults to the web process and skips both tasks when `ABX_PROCESS=websocket`. Keep the existing web pre-deploy behavior; do not configure the Reverb service to run migrations or seeders. The survey seeder is part of the existing deployment contract and is not a pharmacist staff seeder.
