@@ -35,6 +35,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'canAccessPharmacistInbox' => fn () => (bool) $request->user()?->isActivePharmacistStaff(),
+            'canViewResearchReports' => fn () => (bool) ($request->user()?->role === 'admin' || $request->user()?->isActiveResearchStaff()),
+            'canManageAdmin' => fn () => $request->user()?->role === 'admin',
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'warning' => fn () => $request->session()->get('warning'),

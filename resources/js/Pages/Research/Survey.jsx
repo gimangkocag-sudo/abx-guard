@@ -1,5 +1,5 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AbxLayout from '@/Layouts/AbxLayout';
 import PageContainer from '@/Components/Abx/PageContainer';
 
@@ -51,9 +51,35 @@ function Question({ item, value, onChange, notApplicable, onNotApplicable, error
 
 export default function ResearchSurvey({ instrument, stage, sections = [], itemCount = 0, submission, answers = {}, notApplicable = [], evaluationAvailable = false, blockedStage = false }) {
     const page = usePage();
-    const [step, setStep] = useState(0);
+    const [stepState, setStepState] = useState({ stage, index: 0 });
+    const step = stepState.stage === stage ? stepState.index : 0;
+    const setStep = (index) => setStepState({ stage, index });
     const form = useForm({ answers, notApplicable });
-    const current = sections[step];
+    // Initial and evaluation have different section counts. If Inertia reuses
+    // this component when the stage changes, don't carry an invalid step over.
+    const safeStep = Math.min(step, Math.max(0, sections.length - 1));
+    const sectionNavigationRef = useRef(null);
+    const previousNavigationRef = useRef({ stage, index: 0 });
+    useEffect(() => {
+        if (step !== safeStep) setStep(safeStep);
+    }, [step, safeStep]);
+    useEffect(() => {
+        const previous = previousNavigationRef.current;
+        if (previous.stage !== stage) {
+            // Inertia may preserve the previous page's scroll position when
+            // switching from A–E to F–H. Run after the page swap so the sticky
+            // navbar cannot cover the evaluation heading.
+            const frame = window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+            previousNavigationRef.current = { stage, index: safeStep };
+            return () => window.cancelAnimationFrame(frame);
+        }
+        if (previous.index !== safeStep) {
+            const frame = window.requestAnimationFrame(() => sectionNavigationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+            previousNavigationRef.current = { stage, index: safeStep };
+            return () => window.cancelAnimationFrame(frame);
+        }
+    }, [stage, safeStep]);
+    const current = sections[safeStep];
     const submitted = submission?.status === 'submitted';
     const doneItems = useMemo(() => sections.flatMap((section) => section.items).filter((item) => {
         const value = form.data.answers[item.code];
@@ -99,19 +125,19 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
             {page.props.flash?.draftSaved && <p role="status" className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">Draft tersimpan di database dan dapat dilanjutkan nanti.</p>}
             {form.errors.stage && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">{form.errors.stage}</p>}
 
-            <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="stage-heading">
+            <section ref={sectionNavigationRef} className="mt-6 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-labelledby="stage-heading">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div><p className="text-sm font-semibold text-teal-800">{stageLabel}</p><h2 id="stage-heading" className="mt-1 text-xl font-bold text-teal-950">{submitted ? 'Jawaban tahap ini tersimpan' : current?.title}</h2></div>
                     {submitted && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">Terkirim</span>}
                 </div>
                 {!submitted && <>
                     <p className="mt-2 text-sm leading-6 text-slate-600">{current?.instruction}</p>
-                    <div className="mt-4 flex items-center justify-between gap-3 text-xs font-medium text-slate-600"><span>Bagian {step + 1} dari {sections.length}</span><span>{doneItems} dari {itemCount} item terisi</span></div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Progres pengisian survei" aria-valuemin="0" aria-valuemax={sections.length} aria-valuenow={step + 1}>
-                        <div className="h-full rounded-full bg-teal-700 transition-[width]" style={{ width: `${((step + 1) / sections.length) * 100}%` }} />
+                    <div className="mt-4 flex items-center justify-between gap-3 text-xs font-medium text-slate-600"><span>Bagian {current?.key ?? '—'} · {safeStep + 1} dari {sections.length}</span><span>{doneItems} dari {itemCount} item terisi</span></div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Progres pengisian survei" aria-valuemin="0" aria-valuemax={sections.length} aria-valuenow={safeStep + 1}>
+                        <div className="h-full rounded-full bg-teal-700 transition-[width]" style={{ width: `${sections.length ? ((safeStep + 1) / sections.length) * 100 : 0}%` }} />
                     </div>
                     <ol className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8" aria-label="Bagian survei">
-                        {sections.map((section, index) => <li key={section.key}><button type="button" onClick={() => index === step ? null : saveDraft(index)} disabled={form.processing} aria-current={index === step ? 'step' : undefined} className={`flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${index === step ? 'bg-teal-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-teal-50'}`}>{section.key}</button></li>)}
+                        {sections.map((section, index) => <li key={section.key}><button type="button" onClick={() => index === safeStep ? null : saveDraft(index)} disabled={form.processing} aria-current={index === safeStep ? 'step' : undefined} className={`flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${index === safeStep ? 'bg-teal-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-teal-50'}`}>{section.key}</button></li>)}
                     </ol>
                 </>}
             </section>
@@ -121,10 +147,10 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
                     {current?.items.map((item) => <Question key={item.code} item={item} value={form.data.answers[item.code]} onChange={(value) => form.setData('answers', { ...form.data.answers, [item.code]: value })} notApplicable={form.data.notApplicable.includes(item.code)} onNotApplicable={(checked) => setNotApplicable(item.code, checked)} error={form.errors[`answers.${item.code}`]} disabled={form.processing || item.code === 'E02' && form.data.answers.E01 === 'belum_pernah'} />)}
                 </div>
                 <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0 || form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:cursor-not-allowed disabled:opacity-50">Kembali</button>
+                    <button type="button" onClick={() => setStep(Math.max(0, safeStep - 1))} disabled={safeStep === 0 || form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:cursor-not-allowed disabled:opacity-50">Kembali</button>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <button type="button" onClick={() => saveDraft(step)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50">{form.processing ? 'Menyimpan…' : 'Simpan draft'}</button>
-                        {step < sections.length - 1 ? <button type="button" onClick={() => saveDraft(step + 1)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">Simpan dan lanjut</button> : <button type="button" onClick={submit} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">{form.processing ? 'Mengirim…' : 'Kirim tahap ini'}</button>}
+                        <button type="button" onClick={() => saveDraft(safeStep)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50">{form.processing ? 'Menyimpan…' : 'Simpan draft'}</button>
+                        {safeStep < sections.length - 1 ? <button type="button" onClick={() => saveDraft(safeStep + 1)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">Simpan dan lanjut</button> : <button type="button" onClick={submit} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">{form.processing ? 'Mengirim…' : 'Kirim tahap ini'}</button>}
                     </div>
                 </div>
             </>}

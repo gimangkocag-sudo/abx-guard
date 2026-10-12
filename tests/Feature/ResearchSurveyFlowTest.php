@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\PharmacistStaff;
 use App\Models\ResearchInstrument;
 use App\Models\ResearchItem;
+use App\Models\ResearchStaffMembership;
 use App\Models\ResearchSubmission;
+use App\Models\SurveyQuestion;
 use App\Models\User;
 use App\Services\ResearchSurveyService;
 use Database\Seeders\ResearchInstrumentSeeder;
+use Database\Seeders\SurveySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -71,9 +75,9 @@ class ResearchSurveyFlowTest extends TestCase
                 ->where('stage', 'initial'));
 
         $instrument = $this->instrument();
-        $this->seed(\Database\Seeders\SurveySeeder::class);
+        $this->seed(SurveySeeder::class);
         $this->assertSame(47, $instrument->sections->sum(fn ($section) => $section->items->count()));
-        $this->assertSame(36, \App\Models\SurveyQuestion::count());
+        $this->assertSame(36, SurveyQuestion::count());
     }
 
     public function test_admin_can_also_open_the_user_research_survey(): void
@@ -180,6 +184,72 @@ class ResearchSurveyFlowTest extends TestCase
         $this->actingAs($user)->get('/admin/research-survey/export')->assertForbidden();
     }
 
+    public function test_research_staff_can_view_reports_without_admin_access_and_membership_is_independent(): void
+    {
+        $staff = User::factory()->create(['role' => 'user']);
+        ResearchStaffMembership::create(['user_id' => $staff->id, 'active' => true]);
+
+        $respondent = User::factory()->create();
+        $submission = app(ResearchSurveyService::class)->saveDraft(
+            $respondent,
+            $this->instrument(),
+            'initial',
+            ['A01' => 'Jawaban tersimpan di database'],
+            [],
+        );
+
+        $this->actingAs($staff)->get('/admin/research-survey')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Research/Index')
+                ->where('rows.0.id', $submission->id)
+                ->where('rows.0.userName', $respondent->name)
+                ->where('canManageAdmin', false)
+                ->where('canViewResearchReports', true));
+        $this->actingAs($staff)->get('/admin/research-survey/export')->assertOk();
+        $this->actingAs($staff)->get("/admin/research-survey/{$submission->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Research/Show')
+                ->where('submission.userId', $respondent->id)
+                ->where('sections.0.items.0.value', 'Jawaban tersimpan di database'));
+        $this->actingAs($staff)->get('/admin/users')->assertForbidden();
+        $this->actingAs($staff)->get('/admin/statistics')->assertForbidden();
+        $this->assertSame('user', $staff->fresh()->role);
+
+        $pharmacist = User::factory()->create(['role' => 'user']);
+        PharmacistStaff::create(['user_id' => $pharmacist->id, 'active' => true]);
+        $this->actingAs($pharmacist)->get('/admin/research-survey')->assertForbidden();
+    }
+
+    public function test_research_staff_membership_command_grants_and_revokes_only_report_access(): void
+    {
+        $staff = User::factory()->create(['role' => 'user']);
+
+        $this->artisan('research:staff', ['email' => $staff->email])->assertExitCode(0);
+        $this->assertDatabaseHas('research_staff_memberships', ['user_id' => $staff->id, 'active' => true]);
+        $this->assertSame('user', $staff->fresh()->role);
+
+        $this->artisan('research:staff', ['email' => $staff->email, '--revoke' => true])->assertExitCode(0);
+        $this->assertDatabaseHas('research_staff_memberships', ['user_id' => $staff->id, 'active' => false]);
+        $this->actingAs($staff)->get('/admin/research-survey')->assertForbidden();
+    }
+
+    public function test_submit_validation_failure_does_not_mark_submission_complete(): void
+    {
+        $user = User::factory()->create();
+        $answers = $this->answersFor('initial');
+        unset($answers['A01'], $answers['E02'], $answers['E06']);
+
+        $this->actingAs($user)->from('/survei-penelitian')->post('/survei-penelitian/initial/submit', [
+            'answers' => $answers,
+            'notApplicable' => ['E02', 'E06'],
+        ])->assertSessionHasErrors('answers.A01');
+
+        $this->assertDatabaseCount('research_submissions', 0);
+        $this->assertDatabaseCount('research_answers', 0);
+    }
+
     public function test_admin_export_uses_raw_data_and_escapes_formula_cells(): void
     {
         $user = User::factory()->create();
@@ -200,8 +270,8 @@ class ResearchSurveyFlowTest extends TestCase
         $researchSubmission = ResearchSubmission::where('user_id', $user->id)->firstOrFail();
         $this->actingAs($admin)->get("/admin/research-survey/{$researchSubmission->id}")
             ->assertOk()->assertInertia(fn (Assert $page) => $page->component('Admin/Research/Show')
-                ->where('sections.0.items.0.value', '=SUM(1,2)')
-                ->where('submission.evaluationUnlockedAt', null));
+            ->where('sections.0.items.0.value', '=SUM(1,2)')
+            ->where('submission.evaluationUnlockedAt', null));
         $csv = $this->actingAs($admin)->get('/admin/research-survey/export')->assertOk()->streamedContent();
         $this->assertStringContainsString("'=SUM(1,2)", $csv);
         $this->assertStringContainsString('A01_status', $csv);

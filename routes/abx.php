@@ -12,8 +12,9 @@ use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\LearnController;
 use App\Http\Controllers\MythFactAttemptController;
 use App\Http\Controllers\PharmacistConnectController;
-use App\Http\Middleware\EnsurePharmacistStaff;
 use App\Http\Controllers\ResearchSurveyController;
+use App\Http\Middleware\EnsurePharmacistStaff;
+use App\Http\Middleware\EnsureResearchReportAccess;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -68,9 +69,13 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->name('ad
     Route::get('/survey/{submission}', [AdminSurveyResponseController::class, 'show'])->name('survey.show');
     Route::get('/statistics', AdminStatisticsController::class)->name('statistics');
     Route::get('/export/kap', [AdminExportController::class, 'kap'])->name('export.kap');
+    Route::get('/challenge', [AdminChallengeController::class, 'index'])->name('challenge.index');
+    Route::get('/challenge/{attempt}', [AdminChallengeController::class, 'show'])->name('challenge.show');
+});
+
+// Research report permission is independent from both global admin and pharmacist inbox access.
+Route::middleware(['auth', EnsureResearchReportAccess::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/research-survey', [AdminResearchSurveyController::class, 'index'])->name('research.index');
     Route::get('/research-survey/export', ResearchExportController::class)->name('research.export');
     Route::get('/research-survey/{submission}', [AdminResearchSurveyController::class, 'show'])->name('research.show');
-    Route::get('/challenge', [AdminChallengeController::class, 'index'])->name('challenge.index');
-    Route::get('/challenge/{attempt}', [AdminChallengeController::class, 'show'])->name('challenge.show');
 });

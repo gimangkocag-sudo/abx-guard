@@ -38,6 +38,8 @@ Jumlah 47 item respons: 7 + 2 + 5 + 6 + 4 + 6 + 4 + 10 + 3. Item A05 maksimum du
 
 Semua item berada dalam `ResearchInstrument` → `ResearchSection` → `ResearchItem`; jawaban terhubung melalui `ResearchSubmission` dan `ResearchAnswer`. Controller pengguna menyajikan versi aktif dan service menyimpan jawaban dalam transaksi. `ResearchSurveyRequest` memvalidasi tipe dan opsi. Admin melihat detail/distribusi di `/admin/research-survey`; `ResearchExportService` mengekspor jawaban mentah dan status dengan escaping formula.
 
+Penyimpanan submission memakai `research_submissions`; nilai/status per item tersimpan permanen di `research_answers`, terhubung ke `research_items` dan `research_instruments`. Dashboard admin menautkan daftar submission ke `/admin/research-survey`; halaman ini menyediakan filter, distribusi, detail per submission, dan ekspor CSV. Izin melihat laporan penelitian dapat diberikan terpisah melalui `research_staff_memberships`; izin ini tidak memberi akses ke dashboard admin lain dan tidak sama dengan keanggotaan `pharmacist_staff`.
+
 ## Tahap pengukuran implementasi
 
 * `initial`: A–E, hanya disimpan sekali per pengguna/instrumen/versi/tahap.

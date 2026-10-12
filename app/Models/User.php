@@ -54,6 +54,11 @@ class User extends Authenticatable
         return $this->hasOne(PharmacistStaff::class, 'user_id');
     }
 
+    public function researchStaffMembership(): HasOne
+    {
+        return $this->hasOne(ResearchStaffMembership::class, 'user_id');
+    }
+
     public function pharmacistConversations(): HasMany
     {
         return $this->hasMany(PharmacistConversation::class, 'user_id');
@@ -72,5 +77,10 @@ class User extends Authenticatable
     public function isActivePharmacistStaff(): bool
     {
         return $this->pharmacistStaffMembership()->where('active', true)->exists();
+    }
+
+    public function isActiveResearchStaff(): bool
+    {
+        return $this->researchStaffMembership()->where('active', true)->exists();
     }
 }

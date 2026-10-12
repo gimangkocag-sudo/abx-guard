@@ -9,7 +9,7 @@ class ResearchFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return $this->user()?->role === 'admin' || $this->user()?->isActiveResearchStaff() === true;
     }
 
     public function rules(): array

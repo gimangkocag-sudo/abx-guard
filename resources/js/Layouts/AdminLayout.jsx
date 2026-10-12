@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 
-const NAV = [
+const ADMIN_NAV = [
     ['Dashboard', '/admin'],
     ['Users', '/admin/users'],
-    ['Survei Penelitian', '/admin/research-survey'],
     ['Histori KAP', '/admin/survey'],
     ['Statistik KAP historis', '/admin/statistics'],
     ['AMR Challenge', '/admin/challenge'],
@@ -13,6 +12,10 @@ const NAV = [
 export default function AdminLayout({ title, actions, children }) {
     const { url, props } = usePage();
     const path = url.split('?')[0];
+    const isAdmin = props.canManageAdmin === true;
+    const navItems = isAdmin
+        ? [...ADMIN_NAV.slice(0, 2), ['Survei Penelitian', '/admin/research-survey'], ...ADMIN_NAV.slice(2)]
+        : [['Survei Penelitian', '/admin/research-survey']];
     const [open, setOpen] = useState(false);
     const menuButton = useRef(null);
     const active = (href) => (href === '/admin' ? path === '/admin' : path === href || path.startsWith(`${href}/`));
@@ -31,7 +34,7 @@ export default function AdminLayout({ title, actions, children }) {
 
     const links = (
         <ul className="space-y-1">
-            {NAV.map(([label, href]) => (
+            {navItems.map(([label, href]) => (
                 <li key={href}>
                     <Link href={href} onClick={() => setOpen(false)} aria-current={active(href) ? 'page' : undefined}
                         className={`flex min-h-11 items-center rounded-lg px-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 ${active(href) ? 'bg-teal-800 text-white' : 'text-slate-200 hover:bg-slate-800'}`}>
@@ -49,7 +52,7 @@ export default function AdminLayout({ title, actions, children }) {
             <aside className="hidden w-60 flex-none bg-teal-950 p-4 lg:block" aria-label="Navigasi admin">
                 <div className="mb-6 flex min-h-11 items-center gap-2 px-3 text-white">
                     <svg aria-hidden="true" viewBox="0 0 32 32" className="h-8 w-8 flex-none"><path d="M16 2.5 28 7v8.2c0 7.1-4.8 12-12 14.3C8.8 27.2 4 22.3 4 15.2V7l12-4.5Z" fill="#1769AA" /><path d="m10.5 15.8 3.6 3.6 7.5-7.5" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    <p className="text-base font-bold tracking-tight">ABX GUARD <span className="font-medium text-teal-200">Admin</span></p>
+                    <p className="text-base font-bold tracking-tight">ABX GUARD <span className="font-medium text-teal-200">{isAdmin ? 'Admin' : 'Laporan'}</span></p>
                 </div>
                 {links}
             </aside>
