@@ -2,6 +2,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AbxLayout from '@/Layouts/AbxLayout';
 import PageContainer from '@/Components/Abx/PageContainer';
+import { navigateSurveySection, syncSurveyStage } from '@/lib/surveyNavigation';
 
 function Question({ item, value, onChange, notApplicable, onNotApplicable, error, disabled }) {
     const options = item.options ?? [];
@@ -55,6 +56,7 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
     const step = stepState.stage === stage ? stepState.index : 0;
     const setStep = (index) => setStepState({ stage, index });
     const form = useForm({ answers, notApplicable });
+    const formStageRef = useRef(stage);
     // Initial and evaluation have different section counts. If Inertia reuses
     // this component when the stage changes, don't carry an invalid step over.
     const safeStep = Math.min(step, Math.max(0, sections.length - 1));
@@ -63,6 +65,11 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
     useEffect(() => {
         if (step !== safeStep) setStep(safeStep);
     }, [step, safeStep]);
+    useEffect(() => {
+        if (syncSurveyStage(stage, formStageRef.current, answers, notApplicable, form.setData, form.clearErrors)) {
+            formStageRef.current = stage;
+        }
+    }, [stage, answers, notApplicable]);
     useEffect(() => {
         const previous = previousNavigationRef.current;
         if (previous.stage !== stage) {
@@ -87,12 +94,21 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
     }).length, [sections, form.data.answers, form.data.notApplicable]);
     const stageLabel = stage === 'initial' ? 'Tahap awal · Bagian A–E' : 'Evaluasi setelah pemaparan · Bagian F–H';
 
-    const saveDraft = (nextStep) => form.post(`/survei-penelitian/${stage}/draft`, {
-        preserveScroll: true,
-        onSuccess: () => { form.clearErrors(); setStep(nextStep); },
-        onNetworkError: () => form.setError('stage', 'Koneksi terputus. Jawaban yang sudah disimpan tetap aman; coba simpan kembali saat tersambung.'),
-        onHttpException: () => form.setError('stage', 'Draft belum tersimpan. Coba lagi atau hubungi admin platform.'),
-    });
+    const saveDraft = () => {
+        form.clearErrors();
+        form.post(`/survei-penelitian/${stage}/draft`, {
+            preserveScroll: true,
+            onSuccess: () => form.clearErrors(),
+            onError: (errors) => {
+                const firstInvalid = Object.keys(errors).find((key) => key.startsWith('answers.'))?.slice('answers.'.length);
+                const invalidStep = sections.findIndex((section) => section.items.some((item) => item.code === firstInvalid));
+                if (invalidStep >= 0) setStep(invalidStep);
+            },
+            onNetworkError: () => form.setError('stage', 'Koneksi terputus. Jawaban yang sudah disimpan tetap aman; coba simpan kembali saat tersambung.'),
+            onHttpException: () => form.setError('stage', 'Draft belum tersimpan. Coba lagi atau hubungi admin platform.'),
+        });
+    };
+    const navigateAndSave = (index) => navigateSurveySection(index, sections.length, setStep, saveDraft);
     const submit = () => form.post(`/survei-penelitian/${stage}/submit`, {
         preserveScroll: true,
         onError: (errors) => {
@@ -137,8 +153,9 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
                         <div className="h-full rounded-full bg-teal-700 transition-[width]" style={{ width: `${sections.length ? ((safeStep + 1) / sections.length) * 100 : 0}%` }} />
                     </div>
                     <ol className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8" aria-label="Bagian survei">
-                        {sections.map((section, index) => <li key={section.key}><button type="button" onClick={() => index === safeStep ? null : saveDraft(index)} disabled={form.processing} aria-current={index === safeStep ? 'step' : undefined} className={`flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${index === safeStep ? 'bg-teal-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-teal-50'}`}>{section.key}</button></li>)}
+                        {sections.map((section, index) => <li key={section.key}><button type="button" onClick={() => index === safeStep ? null : navigateAndSave(index)} disabled={form.processing} aria-current={index === safeStep ? 'step' : undefined} className={`flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 ${index === safeStep ? 'bg-teal-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-teal-50'}`}>{section.key}</button></li>)}
                     </ol>
+                    {form.errors.stage && <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">{form.errors.stage}</p>}
                 </>}
             </section>
 
@@ -149,8 +166,8 @@ export default function ResearchSurvey({ instrument, stage, sections = [], itemC
                 <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <button type="button" onClick={() => setStep(Math.max(0, safeStep - 1))} disabled={safeStep === 0 || form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:cursor-not-allowed disabled:opacity-50">Kembali</button>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <button type="button" onClick={() => saveDraft(safeStep)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50">{form.processing ? 'Menyimpan…' : 'Simpan draft'}</button>
-                        {safeStep < sections.length - 1 ? <button type="button" onClick={() => saveDraft(safeStep + 1)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">Simpan dan lanjut</button> : <button type="button" onClick={submit} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">{form.processing ? 'Mengirim…' : 'Kirim tahap ini'}</button>}
+                        <button type="button" onClick={saveDraft} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-teal-900 hover:bg-teal-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50">{form.processing ? 'Menyimpan…' : 'Simpan draft'}</button>
+                        {safeStep < sections.length - 1 ? <button type="button" onClick={() => navigateAndSave(safeStep + 1)} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">{form.processing ? 'Menyimpan…' : 'Simpan dan lanjut'}</button> : <button type="button" onClick={submit} disabled={form.processing} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50">{form.processing ? 'Mengirim…' : 'Kirim tahap ini'}</button>}
                     </div>
                 </div>
             </>}

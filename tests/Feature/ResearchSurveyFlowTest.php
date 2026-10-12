@@ -177,6 +177,41 @@ class ResearchSurveyFlowTest extends TestCase
         $this->assertSame(2, ResearchSubmission::where('user_id', $user->id)->count());
     }
 
+    public function test_evaluation_draft_rejects_stale_initial_answers_and_saves_evaluation_answers(): void
+    {
+        $user = User::factory()->create();
+        $instrument = $this->instrument();
+        $initial = $this->answersFor('initial');
+        unset($initial['E02'], $initial['E06']);
+
+        app(ResearchSurveyService::class)->submit($user, $instrument, 'initial', $initial, ['E02', 'E06']);
+        app(ResearchSurveyService::class)->unlockEvaluation($user, $instrument);
+
+        $this->actingAs($user)
+            ->from('/survei-penelitian?stage=evaluation')
+            ->post('/survei-penelitian/evaluation/draft', ['answers' => ['A01' => 'stale initial answer', 'F01' => '4']])
+            ->assertSessionHasErrors('answers.A01');
+
+        $this->assertDatabaseCount('research_submissions', 1);
+
+        $this->actingAs($user)
+            ->from('/survei-penelitian?stage=evaluation')
+            ->post('/survei-penelitian/evaluation/draft', ['answers' => ['F01' => '4']])
+            ->assertRedirect('/survei-penelitian?stage=evaluation');
+
+        $evaluationSubmission = ResearchSubmission::where('user_id', $user->id)->where('stage', 'evaluation')->firstOrFail();
+        $this->assertDatabaseHas('research_answers', [
+            'submission_id' => $evaluationSubmission->id,
+            'item_id' => ResearchItem::where('code', 'F01')->value('id'),
+            'value' => '4',
+            'answer_status' => 'answered',
+        ]);
+        $this->assertDatabaseMissing('research_answers', [
+            'submission_id' => $evaluationSubmission->id,
+            'item_id' => ResearchItem::where('code', 'A01')->value('id'),
+        ]);
+    }
+
     public function test_users_cannot_view_or_export_admin_research_responses(): void
     {
         $user = User::factory()->create();
